@@ -1,0 +1,458 @@
+@page "/employees"
+@inject IEmployeeService EmployeeService
+@inject IAuthenticationService AuthService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Employees - Philippine Payroll System</PageTitle>
+
+<div class="employees-page">
+    <div class="page-header">
+        <h1>Employee Management</h1>
+        <button class="btn btn-primary" @onclick="ShowAddForm">
+            <span class="bi bi-plus"></span> Add Employee
+        </button>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="loading">Loading employees...</div>
+    }
+    else if (employees.Any())
+    {
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Employee #</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Employment Status</th>
+                        <th>Basic Salary</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var employee in employees)
+                    {
+                        <tr>
+                            <td>@employee.EmployeeCode</td>
+                            <td>@employee.FullName</td>
+                            <td>@employee.Email</td>
+                            <td>@employee.EmploymentStatus</td>
+                            <td>₱@employee.BasicSalary.ToString("N2")</td>
+                            <td>
+                                <span class="badge @(employee.IsActive ? "badge-success" : "badge-danger")">
+                                    @(employee.IsActive ? "Active" : "Inactive")
+                                </span>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-info" @onclick="() => ShowEditForm(employee.EmployeeId)">
+                                    Edit
+                                </button>
+                                <button class="btn btn-sm btn-danger" @onclick="() => DeleteEmployee(employee.EmployeeId)">
+                                    Delete
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else
+    {
+        <div class="no-data">
+            <p>No employees found. Click "Add Employee" to create one.</p>
+        </div>
+    }
+
+    @if (showForm)
+    {
+        <div class="modal-overlay" @onclick="HideForm">
+            <div class="modal-content" @onclick:stopPropagation="true">
+                <div class="modal-header">
+                    <h3>@(isEditMode ? "Edit Employee" : "Add Employee")</h3>
+                    <button class="btn-close" @onclick="HideForm">×</button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="currentEmployee" OnValidSubmit="SaveEmployee">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Employee Code</label>
+                                <InputText class="form-control" @bind-Value="currentEmployee.EmployeeCode" />
+                            </div>
+                            <div class="form-group">
+                                <label>First Name</label>
+                                <InputText class="form-control" @bind-Value="currentEmployee.FirstName" />
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Middle Name</label>
+                                <InputText class="form-control" @bind-Value="currentEmployee.MiddleName" />
+                            </div>
+                            <div class="form-group">
+                                <label>Last Name</label>
+                                <InputText class="form-control" @bind-Value="currentEmployee.LastName" />
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Date of Birth</label>
+                                <InputDate class="form-control" @bind-Value="currentEmployee.DateOfBirth" />
+                            </div>
+                            <div class="form-group">
+                                <label>Hire Date</label>
+                                <InputDate class="form-control" @bind-Value="currentEmployee.HireDate" />
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Email</label>
+                                <InputText class="form-control" @bind-Value="currentEmployee.Email" />
+                            </div>
+                            <div class="form-group">
+                                <label>Phone Number</label>
+                                <InputText class="form-control" @bind-Value="currentEmployee.PhoneNumber" />
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Address</label>
+                                <InputText class="form-control" @bind-Value="currentEmployee.Address" />
+                            </div>
+                            <div class="form-group">
+                                <label>Employment Status</label>
+                                <InputText class="form-control" @bind-Value="currentEmployee.EmploymentStatus" />
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Basic Salary</label>
+                                <InputNumber class="form-control" @bind-Value="currentEmployee.BasicSalary" />
+                            </div>
+                            <div class="form-group">
+                                <label>Active</label>
+                                <InputCheckbox class="form-check-input" @bind-Value="currentEmployee.IsActive" />
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>SSS Number</label>
+                                <InputText class="form-control" @bind-Value="currentEmployee.SssNumber" />
+                            </div>
+                            <div class="form-group">
+                                <label>PhilHealth Number</label>
+                                <InputText class="form-control" @bind-Value="currentEmployee.PhilhealthNumber" />
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Pag-IBIG Number</label>
+                                <InputText class="form-control" @bind-Value="currentEmployee.PagibigNumber" />
+                            </div>
+                            <div class="form-group">
+                                <label>TIN Number</label>
+                                <InputText class="form-control" @bind-Value="currentEmployee.TinNumber" />
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">Save</button>
+                            <button type="button" class="btn btn-secondary" @onclick="HideForm">Cancel</button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .employees-page {
+        padding: 2rem;
+    }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+
+    .page-header h1 {
+        color: #333;
+        margin: 0;
+    }
+
+    .btn {
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: all 0.3s;
+    }
+
+    .btn-primary {
+        background: #667eea;
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: #5568d3;
+    }
+
+    .btn-info {
+        background: #17a2b8;
+        color: white;
+    }
+
+    .btn-danger {
+        background: #dc3545;
+        color: white;
+        margin-left: 0.5rem;
+    }
+
+    .btn-secondary {
+        background: #6c757d;
+        color: white;
+        margin-left: 0.5rem;
+    }
+
+    .table-container {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .table thead {
+        background: #f8f9fa;
+    }
+
+    .table th,
+    .table td {
+        padding: 1rem;
+        text-align: left;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    .table tbody tr:hover {
+        background: #f8f9fa;
+    }
+
+    .badge {
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+
+    .badge-success {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .badge-danger {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 8px;
+        width: 90%;
+        max-width: 800px;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1.5rem;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    .modal-header h3 {
+        margin: 0;
+        color: #333;
+    }
+
+    .btn-close {
+        background: none;
+        border: none;
+        font-size: 2rem;
+        cursor: pointer;
+        color: #666;
+        padding: 0;
+        width: 2rem;
+        height: 2rem;
+    }
+
+    .modal-body {
+        padding: 1.5rem;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        color: #333;
+        font-weight: 500;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+
+    .form-actions {
+        margin-top: 1.5rem;
+        display: flex;
+        justify-content: flex-end;
+    }
+
+    .loading,
+    .no-data {
+        text-align: center;
+        padding: 3rem;
+        color: #666;
+    }
+</style>
+
+@code {
+    private List<EmployeeListDto> employees = new();
+    private EmployeeDto currentEmployee = new();
+    private bool isLoading = true;
+    private bool showForm = false;
+    private bool isEditMode = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var isAuthenticated = await AuthService.IsAuthenticatedAsync();
+        if (!isAuthenticated)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        await LoadEmployees();
+    }
+
+    private async Task LoadEmployees()
+    {
+        isLoading = true;
+        employees = await EmployeeService.GetAllAsync();
+        isLoading = false;
+    }
+
+    private void ShowAddForm()
+    {
+        currentEmployee = new EmployeeDto
+        {
+            IsActive = true,
+            HireDate = DateTime.Today,
+            DateOfBirth = DateTime.Today.AddYears(-25),
+            EmploymentStatus = "Active"
+        };
+        isEditMode = false;
+        showForm = true;
+    }
+
+    private async Task ShowEditForm(Guid employeeId)
+    {
+        // Load full employee details from API
+        var employee = await EmployeeService.GetByIdAsync(employeeId);
+        if (employee != null)
+        {
+            currentEmployee = employee;
+            isEditMode = true;
+            showForm = true;
+        }
+    }
+
+    private void HideForm()
+    {
+        showForm = false;
+    }
+
+    private async Task SaveEmployee()
+    {
+        try
+        {
+            if (isEditMode)
+            {
+                var success = await EmployeeService.UpdateAsync(currentEmployee.EmployeeId, currentEmployee);
+                if (!success)
+                {
+                    await JSRuntime.InvokeVoidAsync("alert", "Failed to update employee. Check console for errors.");
+                    return;
+                }
+            }
+            else
+            {
+                var result = await EmployeeService.CreateAsync(currentEmployee);
+                if (result == null)
+                {
+                    await JSRuntime.InvokeVoidAsync("alert", "Failed to create employee. Check console for errors.");
+                    return;
+                }
+            }
+
+            await LoadEmployees();
+            HideForm();
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"Error saving employee: {ex.Message}");
+        }
+    }
+
+    private async Task DeleteEmployee(Guid id)
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to delete this employee?");
+        if (confirmed)
+        {
+            await EmployeeService.DeleteAsync(id);
+            await LoadEmployees();
+        }
+    }
+}

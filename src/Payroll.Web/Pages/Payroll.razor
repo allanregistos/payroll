@@ -1,0 +1,504 @@
+@page "/payroll"
+@inject IPayrollService PayrollService
+@inject IEmployeeService EmployeeService
+@inject IAuthenticationService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Payroll - Philippine Payroll System</PageTitle>
+
+<div class="payroll-page">
+    <div class="page-header">
+        <h1>Payroll Management</h1>
+        <button class="btn btn-primary" @onclick="ShowComputeForm">
+            <span class="bi bi-calculator"></span> Compute Payroll
+        </button>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="loading">Loading payroll records...</div>
+    }
+    else
+    {
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Employee</th>
+                        <th>Pay Period</th>
+                        <th>Gross Pay</th>
+                        <th>Deductions</th>
+                        <th>Allowances</th>
+                        <th>Net Pay</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var payroll in payrolls)
+                    {
+                        <tr>
+                            <td>
+                                <div>@payroll.EmployeeName</div>
+                                <small class="text-muted">@payroll.EmployeeNumber</small>
+                            </td>
+                            <td>
+                                @payroll.PayPeriodStart.ToString("MMM dd") - @payroll.PayPeriodEnd.ToString("MMM dd, yyyy")
+                            </td>
+                            <td>₱@payroll.GrossPay.ToString("N2")</td>
+                            <td>₱@payroll.TotalDeductions.ToString("N2")</td>
+                            <td>₱@payroll.TotalAllowances.ToString("N2")</td>
+                            <td><strong>₱@payroll.NetPay.ToString("N2")</strong></td>
+                            <td>
+                                @if (payroll.PayrollStatus == "Approved")
+                                {
+                                    <span class="badge badge-success">Approved</span>
+                                }
+                                else if (payroll.PayrollStatus == "Pending")
+                                {
+                                    <span class="badge badge-warning">Pending</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-secondary">@payroll.PayrollStatus</span>
+                                }
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-info" @onclick="() => ViewDetails(payroll)">
+                                    <span class="bi bi-eye"></span> Details
+                                </button>
+                                @if (payroll.PayrollStatus == "Pending")
+                                {
+                                    <button class="btn btn-sm btn-success" @onclick="() => ApprovePayroll(payroll.PayrollId)">
+                                        <span class="bi bi-check-circle"></span> Approve
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            @if (payrolls.Count == 0)
+            {
+                <div class="no-records">No payroll records found.</div>
+            }
+        </div>
+    }
+</div>
+
+@if (showComputeForm)
+{
+    <div class="modal-overlay" @onclick="CloseForm">
+        <div class="modal-dialog" @onclick:stopPropagation="true">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Compute Payroll</h3>
+                    <button class="close-btn" @onclick="CloseForm">&times;</button>
+                </div>
+                <div class="modal-body">
+                    @if (errorMessage != null)
+                    {
+                        <div class="alert alert-danger">@errorMessage</div>
+                    }
+
+                    <div class="form-group">
+                        <label>Employee *</label>
+                        <select class="form-control" @bind="computeRequest.EmployeeId">
+                            <option value="@Guid.Empty">Select Employee</option>
+                            @foreach (var emp in employees)
+                            {
+                                <option value="@emp.EmployeeId">@emp.FullName (@emp.EmployeeCode)</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Pay Period Start *</label>
+                            <input type="date" class="form-control" @bind="payPeriodStart" />
+                        </div>
+                        <div class="form-group">
+                            <label>Pay Period End *</label>
+                            <input type="date" class="form-control" @bind="payPeriodEnd" />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseForm">Cancel</button>
+                    <button class="btn btn-primary" @onclick="ComputePayroll" disabled="@isComputing">
+                        @(isComputing ? "Computing..." : "Compute")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (selectedPayroll != null)
+{
+    <div class="modal-overlay" @onclick="CloseDetails">
+        <div class="modal-dialog modal-lg" @onclick:stopPropagation="true">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Payroll Details</h3>
+                    <button class="close-btn" @onclick="CloseDetails">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="details-section">
+                        <h4>Employee Information</h4>
+                        <div class="details-row">
+                            <span class="label">Employee:</span>
+                            <span class="value">@selectedPayroll.EmployeeName (@selectedPayroll.EmployeeNumber)</span>
+                        </div>
+                        <div class="details-row">
+                            <span class="label">Pay Period:</span>
+                            <span class="value">@selectedPayroll.PayPeriodStart.ToString("MMM dd, yyyy") - @selectedPayroll.PayPeriodEnd.ToString("MMM dd, yyyy")</span>
+                        </div>
+                    </div>
+
+                    <div class="details-section">
+                        <h4>Earnings</h4>
+                        <div class="details-row">
+                            <span class="label">Basic Salary:</span>
+                            <span class="value">₱@selectedPayroll.BasicSalary.ToString("N2")</span>
+                        </div>
+                        <div class="details-row">
+                            <span class="label">Overtime Pay:</span>
+                            <span class="value">₱@selectedPayroll.OvertimePay.ToString("N2")</span>
+                        </div>
+                        <div class="details-row">
+                            <span class="label">Total Allowances:</span>
+                            <span class="value">₱@selectedPayroll.TotalAllowances.ToString("N2")</span>
+                        </div>
+                        <div class="details-row total">
+                            <span class="label"><strong>Gross Pay:</strong></span>
+                            <span class="value"><strong>₱@selectedPayroll.GrossPay.ToString("N2")</strong></span>
+                        </div>
+                    </div>
+
+                    <div class="details-section">
+                        <h4>Deductions</h4>
+                        <div class="details-row">
+                            <span class="label">SSS Contribution:</span>
+                            <span class="value">₱@selectedPayroll.SssContribution.ToString("N2")</span>
+                        </div>
+                        <div class="details-row">
+                            <span class="label">PhilHealth Contribution:</span>
+                            <span class="value">₱@selectedPayroll.PhilhealthContribution.ToString("N2")</span>
+                        </div>
+                        <div class="details-row">
+                            <span class="label">Pag-IBIG Contribution:</span>
+                            <span class="value">₱@selectedPayroll.PagibigContribution.ToString("N2")</span>
+                        </div>
+                        <div class="details-row">
+                            <span class="label">Withholding Tax:</span>
+                            <span class="value">₱@selectedPayroll.WithholdingTax.ToString("N2")</span>
+                        </div>
+                        <div class="details-row total">
+                            <span class="label"><strong>Total Deductions:</strong></span>
+                            <span class="value"><strong>₱@selectedPayroll.TotalDeductions.ToString("N2")</strong></span>
+                        </div>
+                    </div>
+
+                    <div class="details-section net-pay">
+                        <div class="details-row">
+                            <span class="label"><h4>Net Pay:</h4></span>
+                            <span class="value"><h4>₱@selectedPayroll.NetPay.ToString("N2")</h4></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseDetails">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .payroll-page {
+        padding: 2rem;
+    }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+
+    .table-container {
+        background: white;
+        border-radius: 8px;
+        padding: 1rem;
+        overflow-x: auto;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+
+    .modal-lg {
+        max-width: 800px;
+    }
+
+    .details-section {
+        margin-bottom: 1.5rem;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 4px;
+    }
+
+    .details-section h4 {
+        margin-bottom: 1rem;
+        color: #333;
+        border-bottom: 2px solid #667eea;
+        padding-bottom: 0.5rem;
+    }
+
+    .details-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    .details-row:last-child {
+        border-bottom: none;
+    }
+
+    .details-row.total {
+        margin-top: 0.5rem;
+        padding-top: 0.5rem;
+        border-top: 2px solid #333;
+    }
+
+    .details-row .label {
+        color: #666;
+    }
+
+    .details-row .value {
+        color: #333;
+        font-weight: 500;
+    }
+
+    .net-pay {
+        background: #667eea;
+        color: white;
+    }
+
+    .net-pay h4 {
+        color: white;
+        border-bottom-color: white;
+    }
+
+    .net-pay .label,
+    .net-pay .value {
+        color: white;
+    }
+
+    .badge {
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    .badge-success { background: #28a745; color: white; }
+    .badge-warning { background: #ffc107; color: #000; }
+    .badge-secondary { background: #6c757d; color: white; }
+
+    .text-muted {
+        color: #6c757d;
+        font-size: 0.875rem;
+    }
+
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    }
+
+    .modal-dialog {
+        background: white;
+        border-radius: 8px;
+        max-width: 600px;
+        width: 100%;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    .close-btn {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #666;
+    }
+
+    .modal-body {
+        padding: 1rem;
+    }
+
+    .modal-footer {
+        padding: 1rem;
+        border-top: 1px solid #e0e0e0;
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+    }
+
+    .form-group {
+        margin-bottom: 1rem;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        color: #333;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+
+    .no-records {
+        text-align: center;
+        padding: 2rem;
+        color: #666;
+    }
+
+    .loading {
+        text-align: center;
+        padding: 2rem;
+        color: #666;
+    }
+</style>
+
+@code {
+    private List<PayrollDto> payrolls = new();
+    private List<EmployeeListDto> employees = new();
+    private PayrollComputeRequest computeRequest = new();
+    private PayrollDto? selectedPayroll;
+    private bool showComputeForm = false;
+    private bool isLoading = true;
+    private bool isComputing = false;
+    private string? errorMessage;
+    private DateTime payPeriodStart = DateTime.Today.AddDays(-14);
+    private DateTime payPeriodEnd = DateTime.Today;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var isAuthenticated = await AuthService.IsAuthenticatedAsync();
+        if (!isAuthenticated)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        payrolls = await PayrollService.GetAllAsync();
+        employees = await EmployeeService.GetAllAsync();
+        isLoading = false;
+    }
+
+    private void ShowComputeForm()
+    {
+        computeRequest = new PayrollComputeRequest
+        {
+            PayPeriodStart = DateOnly.FromDateTime(payPeriodStart),
+            PayPeriodEnd = DateOnly.FromDateTime(payPeriodEnd)
+        };
+        errorMessage = null;
+        showComputeForm = true;
+    }
+
+    private void CloseForm()
+    {
+        showComputeForm = false;
+        errorMessage = null;
+    }
+
+    private async Task ComputePayroll()
+    {
+        if (computeRequest.EmployeeId == Guid.Empty)
+        {
+            errorMessage = "Please select an employee";
+            return;
+        }
+
+        isComputing = true;
+        errorMessage = null;
+
+        computeRequest.PayPeriodStart = DateOnly.FromDateTime(payPeriodStart);
+        computeRequest.PayPeriodEnd = DateOnly.FromDateTime(payPeriodEnd);
+
+        try
+        {
+            var result = await PayrollService.ComputePayrollAsync(computeRequest);
+            if (result != null)
+            {
+                await LoadData();
+                CloseForm();
+            }
+            else
+            {
+                errorMessage = "Failed to compute payroll";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isComputing = false;
+        }
+    }
+
+    private void ViewDetails(PayrollDto payroll)
+    {
+        selectedPayroll = payroll;
+    }
+
+    private void CloseDetails()
+    {
+        selectedPayroll = null;
+    }
+
+    private async Task ApprovePayroll(Guid id)
+    {
+        var success = await PayrollService.ApprovePayrollAsync(id);
+        if (success)
+        {
+            await LoadData();
+        }
+    }
+}

@@ -1,0 +1,55 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{F7A2165B-6D2F-4823-8A00-B86E911A464F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Payroll.API", "src\Payroll.API\Payroll.API.csproj", "{D7ED64E1-E6E3-468D-959D-F433AA50D6F2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Payroll.Application", "src\Payroll.Application\Payroll.Application.csproj", "{AE69D4BA-20E9-458F-9180-411762BC07F0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Payroll.Core", "src\Payroll.Core\Payroll.Core.csproj", "{B5F56B89-FCEC-4FC4-9CCD-B6F354E93F3A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Payroll.Infrastructure", "src\Payroll.Infrastructure\Payroll.Infrastructure.csproj", "{5BEFCEC9-65F9-43EB-88B3-D006047CCB7E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Payroll.Web", "src\Payroll.Web\Payroll.Web.csproj", "{0667E98A-50EE-452C-9176-91E21DF7CD95}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D7ED64E1-E6E3-468D-959D-F433AA50D6F2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D7ED64E1-E6E3-468D-959D-F433AA50D6F2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D7ED64E1-E6E3-468D-959D-F433AA50D6F2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D7ED64E1-E6E3-468D-959D-F433AA50D6F2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AE69D4BA-20E9-458F-9180-411762BC07F0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AE69D4BA-20E9-458F-9180-411762BC07F0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AE69D4BA-20E9-458F-9180-411762BC07F0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AE69D4BA-20E9-458F-9180-411762BC07F0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B5F56B89-FCEC-4FC4-9CCD-B6F354E93F3A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B5F56B89-FCEC-4FC4-9CCD-B6F354E93F3A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B5F56B89-FCEC-4FC4-9CCD-B6F354E93F3A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B5F56B89-FCEC-4FC4-9CCD-B6F354E93F3A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5BEFCEC9-65F9-43EB-88B3-D006047CCB7E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5BEFCEC9-65F9-43EB-88B3-D006047CCB7E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5BEFCEC9-65F9-43EB-88B3-D006047CCB7E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5BEFCEC9-65F9-43EB-88B3-D006047CCB7E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0667E98A-50EE-452C-9176-91E21DF7CD95}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0667E98A-50EE-452C-9176-91E21DF7CD95}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0667E98A-50EE-452C-9176-91E21DF7CD95}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0667E98A-50EE-452C-9176-91E21DF7CD95}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{D7ED64E1-E6E3-468D-959D-F433AA50D6F2} = {F7A2165B-6D2F-4823-8A00-B86E911A464F}
+		{AE69D4BA-20E9-458F-9180-411762BC07F0} = {F7A2165B-6D2F-4823-8A00-B86E911A464F}
+		{B5F56B89-FCEC-4FC4-9CCD-B6F354E93F3A} = {F7A2165B-6D2F-4823-8A00-B86E911A464F}
+		{5BEFCEC9-65F9-43EB-88B3-D006047CCB7E} = {F7A2165B-6D2F-4823-8A00-B86E911A464F}
+		{0667E98A-50EE-452C-9176-91E21DF7CD95} = {F7A2165B-6D2F-4823-8A00-B86E911A464F}
+	EndGlobalSection
+EndGlobal

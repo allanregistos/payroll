@@ -1,0 +1,14 @@
+/home/allanregistos/apps/payroll/database/HashGenerator/bin/Debug/net9.0/HashGenerator
+/home/allanregistos/apps/payroll/database/HashGenerator/bin/Debug/net9.0/HashGenerator.deps.json
+/home/allanregistos/apps/payroll/database/HashGenerator/bin/Debug/net9.0/HashGenerator.runtimeconfig.json
+/home/allanregistos/apps/payroll/database/HashGenerator/bin/Debug/net9.0/HashGenerator.dll
+/home/allanregistos/apps/payroll/database/HashGenerator/bin/Debug/net9.0/HashGenerator.pdb
+/home/allanregistos/apps/payroll/database/HashGenerator/obj/Debug/net9.0/HashGenerator.GeneratedMSBuildEditorConfig.editorconfig
+/home/allanregistos/apps/payroll/database/HashGenerator/obj/Debug/net9.0/HashGenerator.AssemblyInfoInputs.cache
+/home/allanregistos/apps/payroll/database/HashGenerator/obj/Debug/net9.0/HashGenerator.AssemblyInfo.cs
+/home/allanregistos/apps/payroll/database/HashGenerator/obj/Debug/net9.0/HashGenerator.csproj.CoreCompileInputs.cache
+/home/allanregistos/apps/payroll/database/HashGenerator/obj/Debug/net9.0/HashGenerator.dll
+/home/allanregistos/apps/payroll/database/HashGenerator/obj/Debug/net9.0/refint/HashGenerator.dll
+/home/allanregistos/apps/payroll/database/HashGenerator/obj/Debug/net9.0/HashGenerator.pdb
+/home/allanregistos/apps/payroll/database/HashGenerator/obj/Debug/net9.0/HashGenerator.genruntimeconfig.cache
+/home/allanregistos/apps/payroll/database/HashGenerator/obj/Debug/net9.0/ref/HashGenerator.dll

@@ -1,0 +1,12 @@
+/home/allanregistos/apps/payroll/src/Payroll.Core/bin/Debug/net9.0/Payroll.Core.deps.json
+/home/allanregistos/apps/payroll/src/Payroll.Core/bin/Debug/net9.0/Payroll.Core.dll
+/home/allanregistos/apps/payroll/src/Payroll.Core/bin/Debug/net9.0/Payroll.Core.pdb
+/home/allanregistos/apps/payroll/src/Payroll.Core/obj/Debug/net9.0/Payroll.Core.GeneratedMSBuildEditorConfig.editorconfig
+/home/allanregistos/apps/payroll/src/Payroll.Core/obj/Debug/net9.0/Payroll.Core.AssemblyInfoInputs.cache
+/home/allanregistos/apps/payroll/src/Payroll.Core/obj/Debug/net9.0/Payroll.Core.AssemblyInfo.cs
+/home/allanregistos/apps/payroll/src/Payroll.Core/obj/Debug/net9.0/Payroll.Core.csproj.CoreCompileInputs.cache
+/home/allanregistos/apps/payroll/src/Payroll.Core/obj/Debug/net9.0/Payroll.Core.dll
+/home/allanregistos/apps/payroll/src/Payroll.Core/obj/Debug/net9.0/refint/Payroll.Core.dll
+/home/allanregistos/apps/payroll/src/Payroll.Core/obj/Debug/net9.0/Payroll.Core.pdb
+/home/allanregistos/apps/payroll/src/Payroll.Core/obj/Debug/net9.0/ref/Payroll.Core.dll
+/home/allanregistos/apps/payroll/src/Payroll.Core/obj/Debug/net9.0/Payroll.Core.sourcelink.json

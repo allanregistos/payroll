@@ -1,0 +1,151 @@
+﻿@page "/"
+@inject IAuthenticationService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Dashboard - Philippine Payroll System</PageTitle>
+
+<div class="dashboard">
+    <h1>Dashboard</h1>
+    
+    @if (currentUser != null)
+    {
+        <div class="welcome-card">
+            <h2>Welcome, @currentUser.FirstName @currentUser.LastName!</h2>
+            <p>Role: <strong>@currentUser.Role</strong></p>
+            <p>Username: @currentUser.Username</p>
+            <p>Email: @currentUser.Email</p>
+        </div>
+
+        <div class="cards-container">
+            @if (currentUser.Role == "Admin" || currentUser.Role == "HR")
+            {
+                <div class="dashboard-card">
+                    <h3>Employees</h3>
+                    <p>Manage employee records and information</p>
+                    <button class="btn btn-primary" @onclick="NavigateToEmployees">
+                        View Employees
+                    </button>
+                </div>
+
+                <div class="dashboard-card">
+                    <h3>Attendance</h3>
+                    <p>Track and manage employee attendance</p>
+                    <button class="btn btn-primary" @onclick="NavigateToAttendance">
+                        View Attendance
+                    </button>
+                </div>
+
+                <div class="dashboard-card">
+                    <h3>Payroll</h3>
+                    <p>Process and manage payroll computations</p>
+                    <button class="btn btn-primary" @onclick="NavigateToPayroll">
+                        View Payroll
+                    </button>
+                </div>
+            }
+
+            <div class="dashboard-card">
+                <h3>Leave Requests</h3>
+                <p>Manage leave applications</p>
+                <button class="btn btn-primary" @onclick="NavigateToLeaves">
+                    View Leaves
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .dashboard {
+        padding: 2rem;
+    }
+
+    .dashboard h1 {
+        color: #333;
+        margin-bottom: 2rem;
+    }
+
+    .welcome-card {
+        background: white;
+        padding: 2rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        margin-bottom: 2rem;
+    }
+
+    .welcome-card h2 {
+        color: #667eea;
+        margin-bottom: 1rem;
+    }
+
+    .welcome-card p {
+        color: #666;
+        margin: 0.5rem 0;
+    }
+
+    .cards-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .dashboard-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .dashboard-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    .dashboard-card h3 {
+        color: #333;
+        margin-bottom: 0.5rem;
+    }
+
+    .dashboard-card p {
+        color: #666;
+        margin-bottom: 1rem;
+    }
+
+    .btn-primary {
+        padding: 0.5rem 1rem;
+        background: #667eea;
+        border: none;
+        border-radius: 4px;
+        color: white;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: background 0.3s;
+    }
+
+    .btn-primary:hover {
+        background: #5568d3;
+    }
+</style>
+
+@code {
+    private UserResponse? currentUser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var isAuthenticated = await AuthService.IsAuthenticatedAsync();
+        
+        if (!isAuthenticated)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        currentUser = await AuthService.GetCurrentUserAsync();
+    }
+
+    private void NavigateToEmployees() => Navigation.NavigateTo("/employees");
+    private void NavigateToAttendance() => Navigation.NavigateTo("/attendance");
+    private void NavigateToPayroll() => Navigation.NavigateTo("/payroll");
+    private void NavigateToLeaves() => Navigation.NavigateTo("/leaves");
+}

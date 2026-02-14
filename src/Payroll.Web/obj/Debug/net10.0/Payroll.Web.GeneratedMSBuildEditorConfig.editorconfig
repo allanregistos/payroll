@@ -1,0 +1,77 @@
+is_global = true
+build_property.EnableAotAnalyzer = 
+build_property.EnableSingleFileAnalyzer = 
+build_property.EnableTrimAnalyzer = false
+build_property.IncludeAllContentForSelfExtract = 
+build_property.VerifyReferenceTrimCompatibility = 
+build_property.VerifyReferenceAotCompatibility = 
+build_property.TargetFramework = net10.0
+build_property.TargetFrameworkIdentifier = .NETCoreApp
+build_property.TargetFrameworkVersion = v10.0
+build_property.TargetPlatformMinVersion = 
+build_property.UsingMicrosoftNETSdkWeb = 
+build_property.ProjectTypeGuids = 
+build_property.InvariantGlobalization = false
+build_property.PlatformNeutralAssembly = 
+build_property.EnforceExtendedAnalyzerRules = 
+build_property._SupportedPlatformList = browser
+build_property.RootNamespace = PayrollWeb
+build_property.RootNamespace = PayrollWeb
+build_property.ProjectDir = /home/allanregistos/apps/payroll/src/Payroll.Web/
+build_property.EnableComHosting = 
+build_property.EnableGeneratedComInterfaceComImportInterop = false
+build_property.RazorLangVersion = 9.0
+build_property.SupportLocalizedComponentNames = 
+build_property.GenerateRazorMetadataSourceChecksumAttributes = 
+build_property.MSBuildProjectDirectory = /home/allanregistos/apps/payroll/src/Payroll.Web
+build_property._RazorSourceGeneratorDebug = 
+build_property.EffectiveAnalysisLevelStyle = 10.0
+build_property.EnableCodeStyleSeverity = 
+
+[/home/allanregistos/apps/payroll/src/Payroll.Web/App.razor]
+build_metadata.AdditionalFiles.TargetPath = QXBwLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/allanregistos/apps/payroll/src/Payroll.Web/Pages/Attendance.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXMvQXR0ZW5kYW5jZS5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/allanregistos/apps/payroll/src/Payroll.Web/Pages/Counter.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXMvQ291bnRlci5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/allanregistos/apps/payroll/src/Payroll.Web/Pages/Employees.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXMvRW1wbG95ZWVzLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/allanregistos/apps/payroll/src/Payroll.Web/Pages/Home.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXMvSG9tZS5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/allanregistos/apps/payroll/src/Payroll.Web/Pages/Leaves.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXMvTGVhdmVzLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/allanregistos/apps/payroll/src/Payroll.Web/Pages/Login.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXMvTG9naW4ucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/allanregistos/apps/payroll/src/Payroll.Web/Pages/Payroll.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXMvUGF5cm9sbC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/allanregistos/apps/payroll/src/Payroll.Web/Pages/Weather.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXMvV2VhdGhlci5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/allanregistos/apps/payroll/src/Payroll.Web/_Imports.razor]
+build_metadata.AdditionalFiles.TargetPath = X0ltcG9ydHMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/allanregistos/apps/payroll/src/Payroll.Web/Layout/MainLayout.razor]
+build_metadata.AdditionalFiles.TargetPath = TGF5b3V0L01haW5MYXlvdXQucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = b-cx9ufzsei9
+
+[/home/allanregistos/apps/payroll/src/Payroll.Web/Layout/NavMenu.razor]
+build_metadata.AdditionalFiles.TargetPath = TGF5b3V0L05hdk1lbnUucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = b-1yyiiqc2us
