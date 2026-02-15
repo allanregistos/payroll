@@ -50,20 +50,31 @@ public class PayrollService : IPayrollService
         }
     }
 
-    public async Task<PayrollDto?> ComputePayrollAsync(PayrollComputeRequest request)
+    public async Task<(PayrollDto? Result, string? Error)> ComputePayrollAsync(PayrollComputeRequest request)
     {
         try
         {
             var response = await _httpClient.PostAsJsonAsync("api/payroll/compute", request);
             if (response.IsSuccessStatusCode)
             {
-                return await response.Content.ReadFromJsonAsync<PayrollDto>();
+                var result = await response.Content.ReadFromJsonAsync<PayrollDto>();
+                return (result, null);
             }
-            return null;
+            
+            // Try to extract error message from API response
+            try
+            {
+                var errorBody = await response.Content.ReadFromJsonAsync<ApiError>();
+                return (null, errorBody?.Message ?? $"Failed with status {response.StatusCode}");
+            }
+            catch
+            {
+                return (null, $"Payroll computation failed ({response.StatusCode})");
+            }
         }
-        catch
+        catch (Exception ex)
         {
-            return null;
+            return (null, $"Error: {ex.Message}");
         }
     }
 

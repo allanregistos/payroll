@@ -1,0 +1,360 @@
+@page "/payroll-periods"
+@inject IPayrollPeriodService PeriodService
+@inject IAuthenticationService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Payroll Periods - Steniel Payroll</PageTitle>
+
+<div class="periods-page">
+    <div class="page-header">
+        <h1>Payroll Periods</h1>
+        <button class="btn btn-primary" @onclick="ShowCreateForm">
+            <span class="bi bi-plus-circle"></span> New Period
+        </button>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="loading">Loading payroll periods...</div>
+    }
+    else
+    {
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Period Name</th>
+                        <th>Type</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                        <th>Pay Date</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var period in periods)
+                    {
+                        <tr>
+                            <td><strong>@period.PeriodName</strong></td>
+                            <td>@period.PeriodType</td>
+                            <td>@period.StartDate.ToString("MMM dd, yyyy")</td>
+                            <td>@period.EndDate.ToString("MMM dd, yyyy")</td>
+                            <td>@period.PayDate.ToString("MMM dd, yyyy")</td>
+                            <td>
+                                <span class="badge @GetStatusClass(period.Status)">@period.Status</span>
+                            </td>
+                            <td>
+                                @if (period.Status == "Draft")
+                                {
+                                    <button class="btn btn-sm btn-warning" @onclick="() => StartProcessing(period.PayrollPeriodId)">
+                                        Start Processing
+                                    </button>
+                                    <button class="btn btn-sm btn-danger" @onclick="() => CancelPeriod(period.PayrollPeriodId)">
+                                        Cancel
+                                    </button>
+                                }
+                                else if (period.Status == "Processing")
+                                {
+                                    <button class="btn btn-sm btn-success" @onclick="() => CompletePeriod(period.PayrollPeriodId)">
+                                        Complete
+                                    </button>
+                                    <button class="btn btn-sm btn-danger" @onclick="() => CancelPeriod(period.PayrollPeriodId)">
+                                        Cancel
+                                    </button>
+                                }
+                                else if (period.Status == "Completed")
+                                {
+                                    <button class="btn btn-sm btn-primary" @onclick="() => PostPeriod(period.PayrollPeriodId)">
+                                        Post
+                                    </button>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            @if (periods.Count == 0)
+            {
+                <div class="no-records">No payroll periods found. Create your first payroll period to get started.</div>
+            }
+        </div>
+    }
+
+    @if (statusMessage != null)
+    {
+        <div class="alert @(isError ? "alert-danger" : "alert-success")">@statusMessage</div>
+    }
+</div>
+
+@if (showForm)
+{
+    <div class="modal-overlay" @onclick="CloseForm">
+        <div class="modal-dialog" @onclick:stopPropagation="true">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>New Payroll Period</h3>
+                    <button class="close-btn" @onclick="CloseForm">&times;</button>
+                </div>
+                <div class="modal-body">
+                    @if (errorMessage != null)
+                    {
+                        <div class="alert alert-danger">@errorMessage</div>
+                    }
+
+                    <div class="form-group">
+                        <label>Period Name *</label>
+                        <input type="text" class="form-control" @bind="formData.PeriodName"
+                               placeholder="e.g. Feb 1-15, 2026" />
+                    </div>
+
+                    <div class="form-group">
+                        <label>Period Type</label>
+                        <select class="form-control" @bind="formData.PeriodType">
+                            <option value="Semi-Monthly">Semi-Monthly</option>
+                            <option value="Monthly">Monthly</option>
+                            <option value="Weekly">Weekly</option>
+                            <option value="Special">Special</option>
+                        </select>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Start Date *</label>
+                            <input type="date" class="form-control" @bind="startDate" />
+                        </div>
+                        <div class="form-group">
+                            <label>End Date *</label>
+                            <input type="date" class="form-control" @bind="endDate" />
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Pay Date *</label>
+                        <input type="date" class="form-control" @bind="payDate" />
+                        <small class="text-muted">Date when salaries will be released</small>
+                    </div>
+
+                    <div class="alert alert-info">
+                        New periods start as <strong>Draft</strong>. You can advance them through: Draft → Processing → Completed → Posted.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseForm">Cancel</button>
+                    <button class="btn btn-primary" @onclick="CreatePeriod" disabled="@isSaving">
+                        @(isSaving ? "Creating..." : "Create Period")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .periods-page { padding: 2rem; }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+
+    .table-container {
+        background: white;
+        border-radius: 8px;
+        padding: 1rem;
+        overflow-x: auto;
+    }
+
+    .badge {
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    .badge-draft { background: #ffc107; color: #000; }
+    .badge-processing { background: #17a2b8; color: white; }
+    .badge-completed { background: #28a745; color: white; }
+    .badge-posted { background: #007bff; color: white; }
+    .badge-cancelled { background: #dc3545; color: white; }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+
+    .modal-overlay {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    }
+
+    .modal-dialog {
+        background: white;
+        border-radius: 8px;
+        max-width: 600px;
+        width: 100%;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    .close-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #666; }
+    .modal-body { padding: 1rem; }
+
+    .modal-footer {
+        padding: 1rem;
+        border-top: 1px solid #e0e0e0;
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+    }
+
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; color: #333; }
+    .form-control { width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; }
+
+    .alert { padding: 0.75rem 1rem; border-radius: 4px; margin-top: 1rem; }
+    .alert-danger { background: #f8d7da; color: #842029; }
+    .alert-success { background: #d1e7dd; color: #0f5132; }
+    .alert-info { background: #cff4fc; color: #055160; }
+
+    .text-muted { color: #6c757d; font-size: 0.8rem; }
+    .no-records { text-align: center; padding: 2rem; color: #666; }
+    .loading { text-align: center; padding: 2rem; color: #666; }
+</style>
+
+@code {
+    private List<PayrollPeriodDto> periods = new();
+    private CreatePayrollPeriodDto formData = new();
+    private bool showForm = false;
+    private bool isLoading = true;
+    private bool isSaving = false;
+    private string? errorMessage;
+    private string? statusMessage;
+    private bool isError;
+    private DateTime startDate = DateTime.Today;
+    private DateTime endDate = DateTime.Today.AddDays(14);
+    private DateTime payDate = DateTime.Today.AddDays(19);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var isAuthenticated = await AuthService.IsAuthenticatedAsync();
+        if (!isAuthenticated)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        periods = await PeriodService.GetAllAsync();
+        isLoading = false;
+    }
+
+    private void ShowCreateForm()
+    {
+        formData = new CreatePayrollPeriodDto { PeriodType = "Semi-Monthly" };
+        startDate = DateTime.Today;
+        endDate = DateTime.Today.AddDays(14);
+        payDate = DateTime.Today.AddDays(19);
+        errorMessage = null;
+        showForm = true;
+    }
+
+    private void CloseForm()
+    {
+        showForm = false;
+        errorMessage = null;
+    }
+
+    private string GetStatusClass(string status) => status switch
+    {
+        "Draft" => "badge-draft",
+        "Processing" => "badge-processing",
+        "Completed" => "badge-completed",
+        "Posted" => "badge-posted",
+        "Cancelled" => "badge-cancelled",
+        _ => "badge-secondary"
+    };
+
+    private async Task CreatePeriod()
+    {
+        if (string.IsNullOrWhiteSpace(formData.PeriodName))
+        {
+            errorMessage = "Period name is required";
+            return;
+        }
+
+        formData.StartDate = DateOnly.FromDateTime(startDate);
+        formData.EndDate = DateOnly.FromDateTime(endDate);
+        formData.PayDate = DateOnly.FromDateTime(payDate);
+
+        if (formData.StartDate >= formData.EndDate)
+        {
+            errorMessage = "Start date must be before end date";
+            return;
+        }
+
+        isSaving = true;
+        errorMessage = null;
+
+        var result = await PeriodService.CreateAsync(formData);
+        if (result != null)
+        {
+            statusMessage = "Payroll period created successfully";
+            isError = false;
+            await LoadData();
+            CloseForm();
+        }
+        else
+        {
+            errorMessage = "Failed to create payroll period. It may overlap with an existing period.";
+        }
+
+        isSaving = false;
+    }
+
+    private async Task UpdateStatus(int periodId, string newStatus)
+    {
+        var success = await PeriodService.UpdateStatusAsync(periodId, newStatus);
+        if (success)
+        {
+            statusMessage = $"Period status updated to {newStatus}";
+            isError = false;
+            await LoadData();
+        }
+        else
+        {
+            statusMessage = $"Failed to update status to {newStatus}";
+            isError = true;
+        }
+    }
+
+    private Task StartProcessing(int periodId) => UpdateStatus(periodId, "Processing");
+    private Task CompletePeriod(int periodId) => UpdateStatus(periodId, "Completed");
+    private Task PostPeriod(int periodId) => UpdateStatus(periodId, "Posted");
+    private Task CancelPeriod(int periodId) => UpdateStatus(periodId, "Cancelled");
+}

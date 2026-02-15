@@ -1,0 +1,410 @@
+@page "/employee-loans"
+@inject ILoanService LoanService
+@inject IEmployeeService EmployeeService
+@inject IAuthenticationService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Employee Loans - Steniel Payroll</PageTitle>
+
+<div class="loans-page">
+    <div class="page-header">
+        <h1>Employee Loans & Deductions</h1>
+    </div>
+
+    <div class="tabs">
+        <button class="tab @(activeTab == "loans" ? "active" : "")" @onclick='() => activeTab = "loans"'>Employee Loans</button>
+        <button class="tab @(activeTab == "types" ? "active" : "")" @onclick='() => activeTab = "types"'>Loan Types</button>
+    </div>
+
+    @if (statusMessage != null)
+    {
+        <div class="alert @(isError ? "alert-danger" : "alert-success")">@statusMessage</div>
+    }
+
+    @if (isLoading)
+    {
+        <div class="loading">Loading loan data...</div>
+    }
+    else
+    {
+        @* ───────── Employee Loans Tab ───────── *@
+        @if (activeTab == "loans")
+        {
+            <div class="table-container">
+                <div class="table-header">
+                    <h3>Active Loans</h3>
+                    <button class="btn btn-primary btn-sm" @onclick="ShowAddLoan">+ Create Loan</button>
+                </div>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Loan Type</th>
+                            <th>Amount</th>
+                            <th>Interest</th>
+                            <th>Installments</th>
+                            <th>Monthly Amort.</th>
+                            <th>Total Paid</th>
+                            <th>Balance</th>
+                            <th>Status</th>
+                            <th>First Deduction</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var loan in loans)
+                        {
+                            <tr>
+                                <td>@loan.EmployeeName</td>
+                                <td>@loan.LoanTypeName</td>
+                                <td>@loan.LoanAmount.ToString("N2")</td>
+                                <td>@((loan.InterestRate * 100).ToString("N2"))%</td>
+                                <td>@loan.NumberOfInstallments</td>
+                                <td><strong>@loan.MonthlyAmortization.ToString("N2")</strong></td>
+                                <td>@loan.TotalPaid.ToString("N2")</td>
+                                <td class="@(loan.Balance > 0 ? "text-warning" : "text-success")"><strong>@loan.Balance.ToString("N2")</strong></td>
+                                <td><span class="badge badge-@loan.Status.ToLower()">@loan.Status</span></td>
+                                <td>@loan.FirstDeductionDate.ToString("yyyy-MM-dd")</td>
+                                <td>
+                                    @if (loan.Status == "Active")
+                                    {
+                                        <button class="btn btn-sm btn-danger" @onclick="() => CancelLoan(loan.LoanId)">Cancel</button>
+                                    }
+                                    <button class="btn btn-sm btn-secondary" @onclick="() => ViewPayments(loan.LoanId)">Payments</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                @if (loans.Count == 0)
+                {
+                    <div class="no-records">No employee loans found.</div>
+                }
+            </div>
+        }
+
+        @* ───────── Loan Types Tab ───────── *@
+        @if (activeTab == "types")
+        {
+            <div class="table-container">
+                <div class="table-header">
+                    <h3>Loan Type Catalog</h3>
+                    <button class="btn btn-primary btn-sm" @onclick="ShowAddLoanType">+ Add Loan Type</button>
+                </div>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Name</th>
+                            <th>Description</th>
+                            <th>Active</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var lt in loanTypes)
+                        {
+                            <tr>
+                                <td><strong>@lt.LoanCode</strong></td>
+                                <td>@lt.LoanName</td>
+                                <td>@(lt.Description ?? "—")</td>
+                                <td>@(lt.IsActive ? "✅" : "❌")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                @if (loanTypes.Count == 0)
+                {
+                    <div class="no-records">No loan types configured. Add types like SSS Salary Loan, Pag-IBIG MPL, Company Loan, etc.</div>
+                }
+            </div>
+        }
+    }
+</div>
+
+@* ───────── Create Loan Modal ───────── *@
+@if (showLoanForm)
+{
+    <div class="modal-overlay" @onclick="CloseModal">
+        <div class="modal-dialog" @onclick:stopPropagation="true">
+            <div class="modal-content">
+                <div class="modal-header"><h3>Create Employee Loan</h3><button class="close-btn" @onclick="CloseModal">&times;</button></div>
+                <div class="modal-body">
+                    @if (formError != null) { <div class="alert alert-danger">@formError</div> }
+                    <div class="form-group">
+                        <label>Employee</label>
+                        <select class="form-control" @bind="loanForm.EmployeeId">
+                            <option value="@Guid.Empty">— Select Employee —</option>
+                            @foreach (var emp in employees)
+                            {
+                                <option value="@emp.EmployeeId">@emp.FullName</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Loan Type</label>
+                        <select class="form-control" @bind="loanForm.LoanTypeId">
+                            <option value="0">— Select Loan Type —</option>
+                            @foreach (var lt in loanTypes.Where(t => t.IsActive))
+                            {
+                                <option value="@lt.LoanTypeId">@lt.LoanName</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Loan Amount</label><input type="number" class="form-control" step="0.01" @bind="loanForm.LoanAmount" @bind:after="ComputeAmortization" /></div>
+                        <div class="form-group"><label>Interest Rate (e.g. 0.06 = 6%)</label><input type="number" class="form-control" step="0.0001" @bind="loanForm.InterestRate" @bind:after="ComputeAmortization" /></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Number of Installments</label><input type="number" class="form-control" min="1" @bind="loanForm.NumberOfInstallments" @bind:after="ComputeAmortization" /></div>
+                        <div class="form-group">
+                            <label>Monthly Amortization (computed)</label>
+                            <input type="text" class="form-control" value="@computedAmortization.ToString("N2")" readonly />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Loan Date</label><input type="date" class="form-control" @bind="loanDateInput" /></div>
+                        <div class="form-group"><label>First Deduction Date</label><input type="date" class="form-control" @bind="firstDeductionInput" /></div>
+                    </div>
+                    <div class="form-group"><label>Remarks</label><textarea class="form-control" @bind="loanForm.Remarks" rows="2"></textarea></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
+                    <button class="btn btn-primary" @onclick="CreateLoan" disabled="@isSaving">@(isSaving ? "Saving..." : "Create Loan")</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* ───────── Create Loan Type Modal ───────── *@
+@if (showLoanTypeForm)
+{
+    <div class="modal-overlay" @onclick="CloseModal">
+        <div class="modal-dialog" @onclick:stopPropagation="true">
+            <div class="modal-content">
+                <div class="modal-header"><h3>Add Loan Type</h3><button class="close-btn" @onclick="CloseModal">&times;</button></div>
+                <div class="modal-body">
+                    @if (formError != null) { <div class="alert alert-danger">@formError</div> }
+                    <div class="form-row">
+                        <div class="form-group"><label>Code</label><input type="text" class="form-control" @bind="loanTypeForm.LoanCode" placeholder="e.g. SSS-SAL" /></div>
+                        <div class="form-group"><label>Name</label><input type="text" class="form-control" @bind="loanTypeForm.LoanName" placeholder="e.g. SSS Salary Loan" /></div>
+                    </div>
+                    <div class="form-group"><label>Description</label><textarea class="form-control" @bind="loanTypeForm.Description" rows="2"></textarea></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
+                    <button class="btn btn-primary" @onclick="CreateLoanType" disabled="@isSaving">@(isSaving ? "Saving..." : "Save")</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* ───────── Payments Modal ───────── *@
+@if (showPayments)
+{
+    <div class="modal-overlay" @onclick="CloseModal">
+        <div class="modal-dialog" @onclick:stopPropagation="true">
+            <div class="modal-content">
+                <div class="modal-header"><h3>Payment History</h3><button class="close-btn" @onclick="CloseModal">&times;</button></div>
+                <div class="modal-body">
+                    @if (payments.Count == 0)
+                    {
+                        <div class="no-records">No payments recorded yet for this loan.</div>
+                    }
+                    else
+                    {
+                        <table class="table">
+                            <thead>
+                                <tr><th>Date</th><th>Principal</th><th>Interest</th><th>Total</th><th>Remaining Balance</th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var p in payments)
+                                {
+                                    <tr>
+                                        <td>@p.PaymentDate.ToString("yyyy-MM-dd")</td>
+                                        <td>@p.PrincipalAmount.ToString("N2")</td>
+                                        <td>@p.InterestAmount.ToString("N2")</td>
+                                        <td><strong>@p.TotalAmount.ToString("N2")</strong></td>
+                                        <td>@(p.BalanceAfterPayment?.ToString("N2") ?? "—")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseModal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .loans-page { padding: 2rem; }
+    .page-header { margin-bottom: 1.5rem; }
+
+    .tabs { display: flex; gap: 0; margin-bottom: 1.5rem; border-bottom: 2px solid #e0e0e0; }
+    .tab {
+        padding: 0.75rem 1.5rem; border: none; background: transparent; cursor: pointer;
+        font-weight: 500; color: #666; border-bottom: 3px solid transparent; transition: all 0.2s;
+    }
+    .tab:hover { color: #333; background: #f8f9fa; }
+    .tab.active { color: #0d6efd; border-bottom-color: #0d6efd; font-weight: 600; }
+
+    .table-container { background: white; border-radius: 8px; padding: 1rem; overflow-x: auto; }
+    .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .table-header h3 { margin: 0; font-size: 1.1rem; }
+
+    .badge { padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.85rem; font-weight: 500; }
+    .badge-active { background: #d1e7dd; color: #0f5132; }
+    .badge-completed { background: #cfe2ff; color: #084298; }
+    .badge-cancelled { background: #f8d7da; color: #842029; }
+
+    .text-warning { color: #cc7a00; }
+    .text-success { color: #198754; }
+
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+    .modal-dialog { background: white; border-radius: 8px; max-width: 700px; width: 100%; max-height: 90vh; overflow-y: auto; }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px solid #e0e0e0; }
+    .close-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #666; }
+    .modal-body { padding: 1rem; }
+    .modal-footer { padding: 1rem; border-top: 1px solid #e0e0e0; display: flex; justify-content: flex-end; gap: 0.5rem; }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; margin-bottom: 0.25rem; font-weight: 500; color: #333; font-size: 0.9rem; }
+    .form-control { width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; }
+
+    .alert { padding: 0.75rem 1rem; border-radius: 4px; margin-bottom: 1rem; }
+    .alert-danger { background: #f8d7da; color: #842029; }
+    .alert-success { background: #d1e7dd; color: #0f5132; }
+    .no-records { text-align: center; padding: 2rem; color: #666; }
+    .loading { text-align: center; padding: 2rem; color: #666; }
+</style>
+
+@code {
+    private string activeTab = "loans";
+    private bool isLoading = true;
+    private bool isSaving = false;
+    private string? statusMessage;
+    private bool isError;
+    private string? formError;
+
+    // Data
+    private List<EmployeeLoanDto> loans = new();
+    private List<LoanTypeDto> loanTypes = new();
+    private List<EmployeeListDto> employees = new();
+    private List<LoanPaymentDto> payments = new();
+
+    // Form state
+    private bool showLoanForm, showLoanTypeForm, showPayments;
+    private CreateLoanDto loanForm = new();
+    private CreateLoanTypeDto loanTypeForm = new();
+    private DateTime loanDateInput = DateTime.Today;
+    private DateTime firstDeductionInput = DateTime.Today;
+    private decimal computedAmortization = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var isAuth = await AuthService.IsAuthenticatedAsync();
+        if (!isAuth) { Navigation.NavigateTo("/login"); return; }
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        loans = await LoanService.GetLoansAsync();
+        loanTypes = await LoanService.GetLoanTypesAsync();
+        employees = await EmployeeService.GetAllAsync();
+        isLoading = false;
+    }
+
+    private void CloseModal()
+    {
+        showLoanForm = showLoanTypeForm = showPayments = false;
+        formError = null;
+    }
+
+    private void ComputeAmortization()
+    {
+        if (loanForm.NumberOfInstallments > 0 && loanForm.LoanAmount > 0)
+        {
+            var total = loanForm.LoanAmount * (1 + loanForm.InterestRate);
+            computedAmortization = Math.Round(total / loanForm.NumberOfInstallments, 2);
+        }
+        else
+        {
+            computedAmortization = 0;
+        }
+    }
+
+    // ── Employee Loans ──
+    private void ShowAddLoan()
+    {
+        loanForm = new CreateLoanDto();
+        loanDateInput = DateTime.Today;
+        firstDeductionInput = DateTime.Today;
+        computedAmortization = 0;
+        showLoanForm = true;
+    }
+
+    private async Task CreateLoan()
+    {
+        if (loanForm.EmployeeId == Guid.Empty) { formError = "Select an employee"; return; }
+        if (loanForm.LoanTypeId == 0) { formError = "Select a loan type"; return; }
+        if (loanForm.LoanAmount <= 0) { formError = "Loan amount must be positive"; return; }
+        if (loanForm.NumberOfInstallments <= 0) { formError = "Installments must be positive"; return; }
+
+        loanForm.LoanDate = DateOnly.FromDateTime(loanDateInput);
+        loanForm.FirstDeductionDate = DateOnly.FromDateTime(firstDeductionInput);
+        
+        isSaving = true;
+        formError = null;
+        var result = await LoanService.CreateLoanAsync(loanForm);
+        if (result != null)
+        {
+            statusMessage = $"Loan created for {result.EmployeeName} — ₱{result.MonthlyAmortization:N2}/month";
+            isError = false;
+            await LoadData();
+            CloseModal();
+        }
+        else { formError = "Failed to create loan"; }
+        isSaving = false;
+    }
+
+    private async Task CancelLoan(int id)
+    {
+        var success = await LoanService.CancelLoanAsync(id);
+        statusMessage = success ? "Loan cancelled" : "Failed to cancel loan";
+        isError = !success;
+        await LoadData();
+    }
+
+    private async Task ViewPayments(int loanId)
+    {
+        payments = await LoanService.GetPaymentsAsync(loanId);
+        showPayments = true;
+    }
+
+    // ── Loan Types ──
+    private void ShowAddLoanType()
+    {
+        loanTypeForm = new CreateLoanTypeDto();
+        showLoanTypeForm = true;
+    }
+
+    private async Task CreateLoanType()
+    {
+        if (string.IsNullOrWhiteSpace(loanTypeForm.LoanCode)) { formError = "Code is required"; return; }
+        if (string.IsNullOrWhiteSpace(loanTypeForm.LoanName)) { formError = "Name is required"; return; }
+
+        isSaving = true;
+        var result = await LoanService.CreateLoanTypeAsync(loanTypeForm);
+        if (result != null) { statusMessage = "Loan type created"; isError = false; await LoadData(); CloseModal(); }
+        else { formError = "Failed to create loan type"; }
+        isSaving = false;
+    }
+}

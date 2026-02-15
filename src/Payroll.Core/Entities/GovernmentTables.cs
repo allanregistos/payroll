@@ -44,14 +44,14 @@ public class PagibigContributionTable
 public class TaxTable
 {
     public int TaxTableId { get; set; }
-    public decimal MinIncome { get; set; }
-    public decimal? MaxIncome { get; set; }
+    public decimal MinCompensation { get; set; }
+    public decimal? MaxCompensation { get; set; }
     public decimal BaseTax { get; set; }
     public decimal TaxRate { get; set; }
-    public string? BracketName { get; set; }
+    public decimal ExcessOver { get; set; }
     
     // Tax period
-    public string PeriodType { get; set; } = "Annual";
+    public string PeriodType { get; set; } = "Monthly";
     
     public DateTime EffectiveDate { get; set; }
     public DateTime? EndDate { get; set; }

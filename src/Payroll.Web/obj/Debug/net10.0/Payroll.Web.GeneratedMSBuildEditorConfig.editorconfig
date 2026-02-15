@@ -36,12 +36,24 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvQXR0ZW5kYW5jZS5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
+[/home/allanregistos/apps/payroll/src/Payroll.Web/Pages/Compensation.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXMvQ29tcGVuc2F0aW9uLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
 [/home/allanregistos/apps/payroll/src/Payroll.Web/Pages/Counter.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvQ291bnRlci5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
+[/home/allanregistos/apps/payroll/src/Payroll.Web/Pages/EmployeeLoans.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXMvRW1wbG95ZWVMb2Fucy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
 [/home/allanregistos/apps/payroll/src/Payroll.Web/Pages/Employees.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvRW1wbG95ZWVzLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/allanregistos/apps/payroll/src/Payroll.Web/Pages/GovernmentContributions.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXMvR292ZXJubWVudENvbnRyaWJ1dGlvbnMucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
 [/home/allanregistos/apps/payroll/src/Payroll.Web/Pages/Home.razor]
@@ -58,6 +70,10 @@ build_metadata.AdditionalFiles.CssScope =
 
 [/home/allanregistos/apps/payroll/src/Payroll.Web/Pages/Payroll.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXMvUGF5cm9sbC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/allanregistos/apps/payroll/src/Payroll.Web/Pages/PayrollPeriods.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXMvUGF5cm9sbFBlcmlvZHMucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
 [/home/allanregistos/apps/payroll/src/Payroll.Web/Pages/Weather.razor]

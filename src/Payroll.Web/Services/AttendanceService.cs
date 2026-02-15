@@ -2,6 +2,7 @@ using Blazored.LocalStorage;
 using PayrollWeb.Models;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
 
 namespace PayrollWeb.Services;
 
@@ -29,11 +30,13 @@ public class AttendanceService : IAttendanceService
     {
         try
         {
+            await SetAuthHeaderAsync();
             var response = await _httpClient.GetFromJsonAsync<List<AttendanceDto>>("api/attendance");
             return response ?? new List<AttendanceDto>();
         }
-        catch
+        catch (Exception ex)
         {
+            Console.WriteLine($"Error loading attendance: {ex.Message}");
             return new List<AttendanceDto>();
         }
     }
@@ -42,7 +45,8 @@ public class AttendanceService : IAttendanceService
     {
         try
         {
-            var response = await _httpClient.GetFromJsonAsync<List<AttendanceDto>>($"api/attendance/employee/{employeeId}");
+            await SetAuthHeaderAsync();
+            var response = await _httpClient.GetFromJsonAsync<List<AttendanceDto>>($"api/attendance?employeeId={employeeId}");
             return response ?? new List<AttendanceDto>();
         }
         catch
@@ -55,8 +59,9 @@ public class AttendanceService : IAttendanceService
     {
         try
         {
+            await SetAuthHeaderAsync();
             var response = await _httpClient.GetFromJsonAsync<List<AttendanceDto>>(
-                $"api/attendance/date-range?startDate={startDate:yyyy-MM-dd}&endDate={endDate:yyyy-MM-dd}");
+                $"api/attendance?startDate={startDate:yyyy-MM-dd}&endDate={endDate:yyyy-MM-dd}");
             return response ?? new List<AttendanceDto>();
         }
         catch
@@ -65,10 +70,11 @@ public class AttendanceService : IAttendanceService
         }
     }
 
-    public async Task<AttendanceDto?> GetByIdAsync(Guid id)
+    public async Task<AttendanceDto?> GetByIdAsync(int id)
     {
         try
         {
+            await SetAuthHeaderAsync();
             return await _httpClient.GetFromJsonAsync<AttendanceDto>($"api/attendance/{id}");
         }
         catch
@@ -77,7 +83,7 @@ public class AttendanceService : IAttendanceService
         }
     }
 
-    public async Task<AttendanceDto?> CreateAsync(AttendanceCreateDto attendance)
+    public async Task<(AttendanceDto? Result, string? Error)> CreateAsync(AttendanceCreateDto attendance)
     {
         try
         {
@@ -100,32 +106,45 @@ public class AttendanceService : IAttendanceService
                         attendance.AttendanceDate.ToDateTime(attendance.TimeOut.Value), 
                         DateTimeKind.Utc)
                     : (DateTime?)null,
-                hoursWorked = attendance.HoursWorked,
+                regularHours = attendance.RegularHours,
                 overtimeHours = attendance.OvertimeHours,
-                isLate = attendance.IsLate,
-                isAbsent = attendance.IsAbsent,
+                lateMinutes = attendance.LateMinutes,
+                undertimeMinutes = attendance.UndertimeMinutes,
                 remarks = attendance.Remarks
             };
 
             var response = await _httpClient.PostAsJsonAsync("api/attendance", apiRequest);
             if (response.IsSuccessStatusCode)
             {
-                return await response.Content.ReadFromJsonAsync<AttendanceDto>();
+                var result = await response.Content.ReadFromJsonAsync<AttendanceDto>();
+                return (result, null);
             }
             
-            // Log error for debugging
+            // Extract error message from API response
             var errorContent = await response.Content.ReadAsStringAsync();
             Console.WriteLine($"Error creating attendance: {response.StatusCode} - {errorContent}");
-            return null;
+            
+            // Try to parse the error message from JSON
+            try
+            {
+                var errorObj = JsonSerializer.Deserialize<JsonElement>(errorContent);
+                if (errorObj.TryGetProperty("message", out var messageElement))
+                {
+                    return (null, messageElement.GetString());
+                }
+            }
+            catch { }
+            
+            return (null, $"Server error: {response.StatusCode}");
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Exception creating attendance: {ex.Message}");
-            return null;
+            return (null, $"Error: {ex.Message}");
         }
     }
 
-    public async Task<bool> UpdateAsync(Guid id, AttendanceUpdateDto attendance)
+    public async Task<(bool Success, string? Error)> UpdateAsync(int id, AttendanceUpdateDto attendance)
     {
         try
         {
@@ -144,29 +163,42 @@ public class AttendanceService : IAttendanceService
                         DateTime.Today.Add(attendance.TimeOut.Value.ToTimeSpan()), 
                         DateTimeKind.Utc)
                     : (DateTime?)null,
-                hoursWorked = attendance.HoursWorked,
+                regularHours = attendance.RegularHours,
                 overtimeHours = attendance.OvertimeHours,
-                isLate = attendance.IsLate,
-                isAbsent = attendance.IsAbsent,
+                lateMinutes = attendance.LateMinutes,
+                undertimeMinutes = attendance.UndertimeMinutes,
                 remarks = attendance.Remarks
             };
 
             var response = await _httpClient.PutAsJsonAsync($"api/attendance/{id}", apiRequest);
-            if (!response.IsSuccessStatusCode)
+            if (response.IsSuccessStatusCode)
             {
-                var errorContent = await response.Content.ReadAsStringAsync();
-                Console.WriteLine($"Error updating attendance: {response.StatusCode} - {errorContent}");
+                return (true, null);
             }
-            return response.IsSuccessStatusCode;
+
+            var errorContent = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"Error updating attendance: {response.StatusCode} - {errorContent}");
+            
+            try
+            {
+                var errorObj = JsonSerializer.Deserialize<JsonElement>(errorContent);
+                if (errorObj.TryGetProperty("message", out var messageElement))
+                {
+                    return (false, messageElement.GetString());
+                }
+            }
+            catch { }
+            
+            return (false, $"Server error: {response.StatusCode}");
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Exception updating attendance: {ex.Message}");
-            return false;
+            return (false, $"Error: {ex.Message}");
         }
     }
 
-    public async Task<bool> DeleteAsync(Guid id)
+    public async Task<bool> DeleteAsync(int id)
     {
         try
         {

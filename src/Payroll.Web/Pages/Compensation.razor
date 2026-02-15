@@ -1,0 +1,438 @@
+@page "/compensation"
+@inject ICompensationService CompensationService
+@inject IEmployeeService EmployeeService
+@inject IAuthenticationService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Compensation Management - Steniel Payroll</PageTitle>
+
+<div class="compensation-page">
+    <div class="page-header">
+        <h1>Employee Compensation</h1>
+        <button class="btn btn-primary" @onclick="ShowCreateForm">
+            <span class="bi bi-plus-circle"></span> New Compensation
+        </button>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="loading">Loading compensation records...</div>
+    }
+    else
+    {
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Employee</th>
+                        <th>Basic Salary</th>
+                        <th>Daily Rate</th>
+                        <th>Hourly Rate</th>
+                        <th>COLA</th>
+                        <th>Pay Frequency</th>
+                        <th>Effective Date</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var comp in compensations)
+                    {
+                        <tr class="@(comp.IsActive ? "" : "inactive-row")">
+                            <td>
+                                <div>@comp.EmployeeName</div>
+                                <small class="text-muted">@comp.EmployeeCode</small>
+                            </td>
+                            <td>₱@comp.BasicSalary.ToString("N2")</td>
+                            <td>₱@((comp.DailyRate ?? 0).ToString("N2"))</td>
+                            <td>₱@((comp.HourlyRate ?? 0).ToString("N2"))</td>
+                            <td>₱@comp.Cola.ToString("N2")</td>
+                            <td>@comp.PayFrequency</td>
+                            <td>@comp.EffectiveDate.ToString("MMM dd, yyyy")</td>
+                            <td>
+                                @if (comp.IsActive)
+                                {
+                                    <span class="badge badge-success">Active</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-secondary">Inactive</span>
+                                }
+                            </td>
+                            <td>
+                                @if (comp.IsActive)
+                                {
+                                    <button class="btn btn-sm btn-info" @onclick="() => EditCompensation(comp)">
+                                        <span class="bi bi-pencil"></span> Edit
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            @if (compensations.Count == 0)
+            {
+                <div class="no-records">No compensation records found. Set up employee salaries to get started.</div>
+            }
+        </div>
+    }
+</div>
+
+@if (showForm)
+{
+    <div class="modal-overlay" @onclick="CloseForm">
+        <div class="modal-dialog" @onclick:stopPropagation="true">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>@(isEditing ? "Edit Compensation" : "New Compensation")</h3>
+                    <button class="close-btn" @onclick="CloseForm">&times;</button>
+                </div>
+                <div class="modal-body">
+                    @if (errorMessage != null)
+                    {
+                        <div class="alert alert-danger">@errorMessage</div>
+                    }
+
+                    @if (!isEditing)
+                    {
+                        <div class="form-group">
+                            <label>Employee *</label>
+                            <select class="form-control" @bind="formData.EmployeeId">
+                                <option value="@Guid.Empty">Select Employee</option>
+                                @foreach (var emp in employees)
+                                {
+                                    <option value="@emp.EmployeeId">@emp.FullName (@emp.EmployeeCode)</option>
+                                }
+                            </select>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="form-group">
+                            <label>Employee</label>
+                            <input type="text" class="form-control" value="@editingEmployeeName" disabled />
+                        </div>
+                    }
+
+                    <div class="form-group">
+                        <label>Basic Salary (Monthly) *</label>
+                        <input type="number" class="form-control" step="0.01" @bind="formData.BasicSalary"
+                               @oninput="CalculateRates" />
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Daily Rate</label>
+                            <input type="number" class="form-control" step="0.01" @bind="formData.DailyRate" />
+                            <small class="text-muted">Auto-computed: salary ÷ 22 days</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Hourly Rate</label>
+                            <input type="number" class="form-control" step="0.01" @bind="formData.HourlyRate" />
+                            <small class="text-muted">Auto-computed: daily ÷ 8 hrs</small>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>COLA</label>
+                            <input type="number" class="form-control" step="0.01" @bind="formData.Cola" />
+                        </div>
+                        <div class="form-group">
+                            <label>Pay Frequency</label>
+                            <select class="form-control" @bind="formData.PayFrequency">
+                                <option value="Monthly">Monthly</option>
+                                <option value="Semi-Monthly">Semi-Monthly</option>
+                                <option value="Weekly">Weekly</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    @if (!isEditing)
+                    {
+                        <div class="form-group">
+                            <label>Effective Date *</label>
+                            <input type="date" class="form-control" @bind="effectiveDate" />
+                        </div>
+
+                        <div class="alert alert-info">
+                            <strong>Note:</strong> Setting a new compensation will automatically deactivate any previous active compensation for this employee.
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseForm">Cancel</button>
+                    <button class="btn btn-primary" @onclick="SaveCompensation" disabled="@isSaving">
+                        @(isSaving ? "Saving..." : (isEditing ? "Update" : "Save"))
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .compensation-page {
+        padding: 2rem;
+    }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+
+    .table-container {
+        background: white;
+        border-radius: 8px;
+        padding: 1rem;
+        overflow-x: auto;
+    }
+
+    .inactive-row {
+        opacity: 0.5;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+
+    .badge {
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    .badge-success { background: #28a745; color: white; }
+    .badge-secondary { background: #6c757d; color: white; }
+
+    .text-muted {
+        color: #6c757d;
+        font-size: 0.8rem;
+    }
+
+    .modal-overlay {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    }
+
+    .modal-dialog {
+        background: white;
+        border-radius: 8px;
+        max-width: 600px;
+        width: 100%;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    .close-btn {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #666;
+    }
+
+    .modal-body { padding: 1rem; }
+
+    .modal-footer {
+        padding: 1rem;
+        border-top: 1px solid #e0e0e0;
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+    }
+
+    .form-group {
+        margin-bottom: 1rem;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        color: #333;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+
+    .alert {
+        padding: 0.75rem 1rem;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+    }
+
+    .alert-danger { background: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
+    .alert-info { background: #cff4fc; color: #055160; border: 1px solid #b6effb; }
+
+    .no-records {
+        text-align: center;
+        padding: 2rem;
+        color: #666;
+    }
+
+    .loading {
+        text-align: center;
+        padding: 2rem;
+        color: #666;
+    }
+</style>
+
+@code {
+    private List<CompensationDto> compensations = new();
+    private List<EmployeeListDto> employees = new();
+    private CreateCompensationDto formData = new();
+    private bool showForm = false;
+    private bool isLoading = true;
+    private bool isSaving = false;
+    private bool isEditing = false;
+    private int? editingId = null;
+    private string? editingEmployeeName = null;
+    private string? errorMessage;
+    private DateTime effectiveDate = DateTime.Today;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var isAuthenticated = await AuthService.IsAuthenticatedAsync();
+        if (!isAuthenticated)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        compensations = await CompensationService.GetAllAsync();
+        employees = await EmployeeService.GetAllAsync();
+        isLoading = false;
+    }
+
+    private void ShowCreateForm()
+    {
+        formData = new CreateCompensationDto();
+        effectiveDate = DateTime.Today;
+        isEditing = false;
+        editingId = null;
+        editingEmployeeName = null;
+        errorMessage = null;
+        showForm = true;
+    }
+
+    private void EditCompensation(CompensationDto comp)
+    {
+        formData = new CreateCompensationDto
+        {
+            EmployeeId = comp.EmployeeId,
+            BasicSalary = comp.BasicSalary,
+            DailyRate = comp.DailyRate,
+            HourlyRate = comp.HourlyRate,
+            PayFrequency = comp.PayFrequency,
+            Cola = comp.Cola,
+            EffectiveDate = comp.EffectiveDate
+        };
+        isEditing = true;
+        editingId = comp.CompensationId;
+        editingEmployeeName = $"{comp.EmployeeName} ({comp.EmployeeCode})";
+        errorMessage = null;
+        showForm = true;
+    }
+
+    private void CloseForm()
+    {
+        showForm = false;
+        errorMessage = null;
+    }
+
+    private void CalculateRates(ChangeEventArgs e)
+    {
+        if (decimal.TryParse(e.Value?.ToString(), out var salary))
+        {
+            formData.DailyRate = Math.Round(salary / 22, 2);
+            formData.HourlyRate = Math.Round(salary / 22 / 8, 2);
+        }
+    }
+
+    private async Task SaveCompensation()
+    {
+        if (!isEditing && formData.EmployeeId == Guid.Empty)
+        {
+            errorMessage = "Please select an employee";
+            return;
+        }
+
+        if (formData.BasicSalary <= 0)
+        {
+            errorMessage = "Basic salary must be greater than 0";
+            return;
+        }
+
+        isSaving = true;
+        errorMessage = null;
+
+        try
+        {
+            if (isEditing && editingId.HasValue)
+            {
+                var success = await CompensationService.UpdateAsync(editingId.Value, formData);
+                if (success)
+                {
+                    await LoadData();
+                    CloseForm();
+                }
+                else
+                {
+                    errorMessage = "Failed to update compensation";
+                }
+            }
+            else
+            {
+                formData.EffectiveDate = effectiveDate;
+                var result = await CompensationService.CreateAsync(formData);
+                if (result != null)
+                {
+                    await LoadData();
+                    CloseForm();
+                }
+                else
+                {
+                    errorMessage = "Failed to create compensation record";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}

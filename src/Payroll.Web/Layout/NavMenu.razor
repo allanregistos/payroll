@@ -2,7 +2,7 @@
 
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
-        <a class="navbar-brand" href="">Philippine Payroll</a>
+        <a class="navbar-brand" href="">Steniel Payroll</a>
         <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
             <span class="navbar-toggler-icon"></span>
         </button>
@@ -25,6 +25,11 @@
                 </NavLink>
             </div>
             <div class="nav-item px-3">
+                <NavLink class="nav-link" href="compensation">
+                    <span class="bi bi-currency-exchange-nav-menu" aria-hidden="true"></span> Compensation
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
                 <NavLink class="nav-link" href="attendance">
                     <span class="bi bi-calendar-check-fill-nav-menu" aria-hidden="true"></span> Attendance
                 </NavLink>
@@ -32,6 +37,21 @@
             <div class="nav-item px-3">
                 <NavLink class="nav-link" href="payroll">
                     <span class="bi bi-cash-stack-nav-menu" aria-hidden="true"></span> Payroll
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="payroll-periods">
+                    <span class="bi bi-calendar-range-nav-menu" aria-hidden="true"></span> Pay Periods
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="government-contributions">
+                    <span class="bi bi-building-nav-menu" aria-hidden="true"></span> Gov't Contributions
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="employee-loans">
+                    <span class="bi bi-cash-coin-nav-menu" aria-hidden="true"></span> Loans
                 </NavLink>
             </div>
         }

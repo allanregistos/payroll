@@ -1,0 +1,484 @@
+@page "/government-contributions"
+@inject IGovernmentContributionService GovService
+@inject IAuthenticationService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Government Contributions - Steniel Payroll</PageTitle>
+
+<div class="gov-page">
+    <div class="page-header">
+        <h1>Government Contribution Tables</h1>
+    </div>
+
+    <div class="tabs">
+        <button class="tab @(activeTab == "sss" ? "active" : "")" @onclick='() => activeTab = "sss"'>SSS</button>
+        <button class="tab @(activeTab == "philhealth" ? "active" : "")" @onclick='() => activeTab = "philhealth"'>PhilHealth</button>
+        <button class="tab @(activeTab == "pagibig" ? "active" : "")" @onclick='() => activeTab = "pagibig"'>Pag-IBIG</button>
+        <button class="tab @(activeTab == "tax" ? "active" : "")" @onclick='() => activeTab = "tax"'>Tax</button>
+    </div>
+
+    @if (statusMessage != null)
+    {
+        <div class="alert @(isError ? "alert-danger" : "alert-success")">@statusMessage</div>
+    }
+
+    @if (isLoading)
+    {
+        <div class="loading">Loading contribution tables...</div>
+    }
+    else
+    {
+        @if (activeTab == "sss")
+        {
+            <div class="table-container">
+                <div class="table-header">
+                    <h3>SSS Contribution Table (Bracket-Based)</h3>
+                    <button class="btn btn-primary btn-sm" @onclick="ShowAddSss">+ Add Bracket</button>
+                </div>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Min Salary</th>
+                            <th>Max Salary</th>
+                            <th>EE Contribution</th>
+                            <th>ER Contribution</th>
+                            <th>EC</th>
+                            <th>Total</th>
+                            <th>Effective</th>
+                            <th>Active</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in sssTable)
+                        {
+                            <tr>
+                                <td>@row.MinSalary.ToString("N2")</td>
+                                <td>@row.MaxSalary.ToString("N2")</td>
+                                <td>@row.EmployeeContribution.ToString("N2")</td>
+                                <td>@row.EmployerContribution.ToString("N2")</td>
+                                <td>@row.EcContribution.ToString("N2")</td>
+                                <td><strong>@row.TotalContribution.ToString("N2")</strong></td>
+                                <td>@row.EffectiveDate.ToString("yyyy-MM-dd")</td>
+                                <td>@(row.IsActive ? "✅" : "❌")</td>
+                                <td>
+                                    <button class="btn btn-sm btn-danger" @onclick="() => DeleteSss(row.SssTableId)">Delete</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                @if (sssTable.Count == 0)
+                {
+                    <div class="no-records">No SSS contribution brackets configured.</div>
+                }
+            </div>
+        }
+
+        @if (activeTab == "philhealth")
+        {
+            <div class="table-container">
+                <div class="table-header">
+                    <h3>PhilHealth Contribution Table (Percentage-Based)</h3>
+                    <button class="btn btn-primary btn-sm" @onclick="ShowAddPhilhealth">+ Add Entry</button>
+                </div>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Min Salary</th>
+                            <th>Max Salary</th>
+                            <th>Premium Rate</th>
+                            <th>EE Share</th>
+                            <th>ER Share</th>
+                            <th>Effective</th>
+                            <th>Active</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in philhealthTable)
+                        {
+                            <tr>
+                                <td>@row.MinSalary.ToString("N2")</td>
+                                <td>@(row.MaxSalary?.ToString("N2") ?? "No ceiling")</td>
+                                <td>@((row.PremiumRate * 100).ToString("N2"))%</td>
+                                <td>@((row.EmployeeShare * 100).ToString("N1"))%</td>
+                                <td>@((row.EmployerShare * 100).ToString("N1"))%</td>
+                                <td>@row.EffectiveDate.ToString("yyyy-MM-dd")</td>
+                                <td>@(row.IsActive ? "✅" : "❌")</td>
+                                <td>
+                                    <button class="btn btn-sm btn-danger" @onclick="() => DeletePhilhealth(row.PhilhealthTableId)">Delete</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                @if (philhealthTable.Count == 0)
+                {
+                    <div class="no-records">No PhilHealth contribution entries configured.</div>
+                }
+            </div>
+        }
+
+        @if (activeTab == "pagibig")
+        {
+            <div class="table-container">
+                <div class="table-header">
+                    <h3>Pag-IBIG Contribution Table (Tiered Rates)</h3>
+                    <button class="btn btn-primary btn-sm" @onclick="ShowAddPagibig">+ Add Entry</button>
+                </div>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Min Salary</th>
+                            <th>Max Salary</th>
+                            <th>EE Rate</th>
+                            <th>ER Rate</th>
+                            <th>Max EE</th>
+                            <th>Max ER</th>
+                            <th>Effective</th>
+                            <th>Active</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in pagibigTable)
+                        {
+                            <tr>
+                                <td>@row.MinSalary.ToString("N2")</td>
+                                <td>@(row.MaxSalary?.ToString("N2") ?? "No ceiling")</td>
+                                <td>@((row.EmployeeRate * 100).ToString("N2"))%</td>
+                                <td>@((row.EmployerRate * 100).ToString("N2"))%</td>
+                                <td>@(row.MaxEmployeeContribution?.ToString("N2") ?? "—")</td>
+                                <td>@(row.MaxEmployerContribution?.ToString("N2") ?? "—")</td>
+                                <td>@row.EffectiveDate.ToString("yyyy-MM-dd")</td>
+                                <td>@(row.IsActive ? "✅" : "❌")</td>
+                                <td>
+                                    <button class="btn btn-sm btn-danger" @onclick="() => DeletePagibig(row.PagibigTableId)">Delete</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                @if (pagibigTable.Count == 0)
+                {
+                    <div class="no-records">No Pag-IBIG contribution entries configured.</div>
+                }
+            </div>
+        }
+
+        @if (activeTab == "tax")
+        {
+            <div class="table-container">
+                <div class="table-header">
+                    <h3>Withholding Tax Table (Income Brackets)</h3>
+                    <button class="btn btn-primary btn-sm" @onclick="ShowAddTax">+ Add Bracket</button>
+                </div>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Min Compensation</th>
+                            <th>Max Compensation</th>
+                            <th>Base Tax</th>
+                            <th>Tax Rate</th>
+                            <th>Excess Over</th>
+                            <th>Period</th>
+                            <th>Effective</th>
+                            <th>Active</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in taxTable)
+                        {
+                            <tr>
+                                <td>@row.MinCompensation.ToString("N2")</td>
+                                <td>@(row.MaxCompensation?.ToString("N2") ?? "No ceiling")</td>
+                                <td>@row.BaseTax.ToString("N2")</td>
+                                <td>@((row.TaxRate * 100).ToString("N1"))%</td>
+                                <td>@row.ExcessOver.ToString("N2")</td>
+                                <td>@row.PeriodType</td>
+                                <td>@row.EffectiveDate.ToString("yyyy-MM-dd")</td>
+                                <td>@(row.IsActive ? "✅" : "❌")</td>
+                                <td>
+                                    <button class="btn btn-sm btn-danger" @onclick="() => DeleteTax(row.TaxTableId)">Delete</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                @if (taxTable.Count == 0)
+                {
+                    <div class="no-records">No tax brackets configured.</div>
+                }
+            </div>
+        }
+    }
+</div>
+
+@* ───────── Add SSS Modal ───────── *@
+@if (showSssForm)
+{
+    <div class="modal-overlay" @onclick="CloseModal">
+        <div class="modal-dialog" @onclick:stopPropagation="true">
+            <div class="modal-content">
+                <div class="modal-header"><h3>Add SSS Bracket</h3><button class="close-btn" @onclick="CloseModal">&times;</button></div>
+                <div class="modal-body">
+                    @if (formError != null) { <div class="alert alert-danger">@formError</div> }
+                    <div class="form-row">
+                        <div class="form-group"><label>Min Salary</label><input type="number" class="form-control" step="0.01" @bind="sssForm.MinSalary" /></div>
+                        <div class="form-group"><label>Max Salary</label><input type="number" class="form-control" step="0.01" @bind="sssForm.MaxSalary" /></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>EE Contribution</label><input type="number" class="form-control" step="0.01" @bind="sssForm.EmployeeContribution" /></div>
+                        <div class="form-group"><label>ER Contribution</label><input type="number" class="form-control" step="0.01" @bind="sssForm.EmployerContribution" /></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>EC Contribution</label><input type="number" class="form-control" step="0.01" @bind="sssForm.EcContribution" /></div>
+                        <div class="form-group"><label>Total Contribution</label><input type="number" class="form-control" step="0.01" @bind="sssForm.TotalContribution" /></div>
+                    </div>
+                    <div class="form-group"><label>Effective Date</label><input type="date" class="form-control" @bind="formEffectiveDate" /></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
+                    <button class="btn btn-primary" @onclick="CreateSss" disabled="@isSaving">@(isSaving ? "Saving..." : "Save")</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* ───────── Add PhilHealth Modal ───────── *@
+@if (showPhilhealthForm)
+{
+    <div class="modal-overlay" @onclick="CloseModal">
+        <div class="modal-dialog" @onclick:stopPropagation="true">
+            <div class="modal-content">
+                <div class="modal-header"><h3>Add PhilHealth Entry</h3><button class="close-btn" @onclick="CloseModal">&times;</button></div>
+                <div class="modal-body">
+                    @if (formError != null) { <div class="alert alert-danger">@formError</div> }
+                    <div class="form-row">
+                        <div class="form-group"><label>Min Salary</label><input type="number" class="form-control" step="0.01" @bind="philhealthForm.MinSalary" /></div>
+                        <div class="form-group"><label>Max Salary (blank = no ceiling)</label><input type="number" class="form-control" step="0.01" @bind="philhealthForm.MaxSalary" /></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Premium Rate (e.g. 0.05 = 5%)</label><input type="number" class="form-control" step="0.0001" @bind="philhealthForm.PremiumRate" /></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>EE Share (e.g. 0.50 = 50%)</label><input type="number" class="form-control" step="0.01" @bind="philhealthForm.EmployeeShare" /></div>
+                        <div class="form-group"><label>ER Share (e.g. 0.50 = 50%)</label><input type="number" class="form-control" step="0.01" @bind="philhealthForm.EmployerShare" /></div>
+                    </div>
+                    <div class="form-group"><label>Effective Date</label><input type="date" class="form-control" @bind="formEffectiveDate" /></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
+                    <button class="btn btn-primary" @onclick="CreatePhilhealth" disabled="@isSaving">@(isSaving ? "Saving..." : "Save")</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* ───────── Add Pag-IBIG Modal ───────── *@
+@if (showPagibigForm)
+{
+    <div class="modal-overlay" @onclick="CloseModal">
+        <div class="modal-dialog" @onclick:stopPropagation="true">
+            <div class="modal-content">
+                <div class="modal-header"><h3>Add Pag-IBIG Entry</h3><button class="close-btn" @onclick="CloseModal">&times;</button></div>
+                <div class="modal-body">
+                    @if (formError != null) { <div class="alert alert-danger">@formError</div> }
+                    <div class="form-row">
+                        <div class="form-group"><label>Min Salary</label><input type="number" class="form-control" step="0.01" @bind="pagibigForm.MinSalary" /></div>
+                        <div class="form-group"><label>Max Salary (blank = no ceiling)</label><input type="number" class="form-control" step="0.01" @bind="pagibigForm.MaxSalary" /></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>EE Rate (e.g. 0.02 = 2%)</label><input type="number" class="form-control" step="0.0001" @bind="pagibigForm.EmployeeRate" /></div>
+                        <div class="form-group"><label>ER Rate (e.g. 0.02 = 2%)</label><input type="number" class="form-control" step="0.0001" @bind="pagibigForm.EmployerRate" /></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Max EE Contribution</label><input type="number" class="form-control" step="0.01" @bind="pagibigForm.MaxEmployeeContribution" /></div>
+                        <div class="form-group"><label>Max ER Contribution</label><input type="number" class="form-control" step="0.01" @bind="pagibigForm.MaxEmployerContribution" /></div>
+                    </div>
+                    <div class="form-group"><label>Effective Date</label><input type="date" class="form-control" @bind="formEffectiveDate" /></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
+                    <button class="btn btn-primary" @onclick="CreatePagibig" disabled="@isSaving">@(isSaving ? "Saving..." : "Save")</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* ───────── Add Tax Modal ───────── *@
+@if (showTaxForm)
+{
+    <div class="modal-overlay" @onclick="CloseModal">
+        <div class="modal-dialog" @onclick:stopPropagation="true">
+            <div class="modal-content">
+                <div class="modal-header"><h3>Add Tax Bracket</h3><button class="close-btn" @onclick="CloseModal">&times;</button></div>
+                <div class="modal-body">
+                    @if (formError != null) { <div class="alert alert-danger">@formError</div> }
+                    <div class="form-row">
+                        <div class="form-group"><label>Min Compensation</label><input type="number" class="form-control" step="0.01" @bind="taxForm.MinCompensation" /></div>
+                        <div class="form-group"><label>Max Compensation (blank = no ceiling)</label><input type="number" class="form-control" step="0.01" @bind="taxForm.MaxCompensation" /></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Base Tax</label><input type="number" class="form-control" step="0.01" @bind="taxForm.BaseTax" /></div>
+                        <div class="form-group"><label>Tax Rate (e.g. 0.20 = 20%)</label><input type="number" class="form-control" step="0.0001" @bind="taxForm.TaxRate" /></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Excess Over (Threshold)</label><input type="number" class="form-control" step="0.01" @bind="taxForm.ExcessOver" /></div>
+                        <div class="form-group">
+                            <label>Period Type</label>
+                            <select class="form-control" @bind="taxForm.PeriodType">
+                                <option value="Annual">Annual</option>
+                                <option value="Monthly">Monthly</option>
+                                <option value="Semi-Monthly">Semi-Monthly</option>
+                            </select>
+                        </div>
+                        <div class="form-group"><label>Effective Date</label><input type="date" class="form-control" @bind="formEffectiveDate" /></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
+                    <button class="btn btn-primary" @onclick="CreateTax" disabled="@isSaving">@(isSaving ? "Saving..." : "Save")</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .gov-page { padding: 2rem; }
+    .page-header { margin-bottom: 1.5rem; }
+
+    .tabs { display: flex; gap: 0; margin-bottom: 1.5rem; border-bottom: 2px solid #e0e0e0; }
+    .tab {
+        padding: 0.75rem 1.5rem; border: none; background: transparent; cursor: pointer;
+        font-weight: 500; color: #666; border-bottom: 3px solid transparent; transition: all 0.2s;
+    }
+    .tab:hover { color: #333; background: #f8f9fa; }
+    .tab.active { color: #0d6efd; border-bottom-color: #0d6efd; font-weight: 600; }
+
+    .table-container { background: white; border-radius: 8px; padding: 1rem; overflow-x: auto; }
+    .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .table-header h3 { margin: 0; font-size: 1.1rem; }
+
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+    .modal-dialog { background: white; border-radius: 8px; max-width: 650px; width: 100%; max-height: 90vh; overflow-y: auto; }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px solid #e0e0e0; }
+    .close-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #666; }
+    .modal-body { padding: 1rem; }
+    .modal-footer { padding: 1rem; border-top: 1px solid #e0e0e0; display: flex; justify-content: flex-end; gap: 0.5rem; }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; margin-bottom: 0.25rem; font-weight: 500; color: #333; font-size: 0.9rem; }
+    .form-control { width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; }
+
+    .alert { padding: 0.75rem 1rem; border-radius: 4px; margin-bottom: 1rem; }
+    .alert-danger { background: #f8d7da; color: #842029; }
+    .alert-success { background: #d1e7dd; color: #0f5132; }
+    .no-records { text-align: center; padding: 2rem; color: #666; }
+    .loading { text-align: center; padding: 2rem; color: #666; }
+</style>
+
+@code {
+    private string activeTab = "sss";
+    private bool isLoading = true;
+    private bool isSaving = false;
+    private string? statusMessage;
+    private bool isError;
+    private string? formError;
+    private DateTime formEffectiveDate = new DateTime(2024, 1, 1);
+
+    // Data lists
+    private List<SssTableDto> sssTable = new();
+    private List<PhilhealthTableDto> philhealthTable = new();
+    private List<PagibigTableDto> pagibigTable = new();
+    private List<TaxTableDto> taxTable = new();
+
+    // Form state
+    private bool showSssForm, showPhilhealthForm, showPagibigForm, showTaxForm;
+    private SssTableDto sssForm = new();
+    private PhilhealthTableDto philhealthForm = new();
+    private PagibigTableDto pagibigForm = new();
+    private TaxTableDto taxForm = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var isAuth = await AuthService.IsAuthenticatedAsync();
+        if (!isAuth) { Navigation.NavigateTo("/login"); return; }
+        await LoadAllData();
+    }
+
+    private async Task LoadAllData()
+    {
+        isLoading = true;
+        sssTable = await GovService.GetSssTableAsync();
+        philhealthTable = await GovService.GetPhilhealthTableAsync();
+        pagibigTable = await GovService.GetPagibigTableAsync();
+        taxTable = await GovService.GetTaxTableAsync();
+        isLoading = false;
+    }
+
+    private void CloseModal()
+    {
+        showSssForm = showPhilhealthForm = showPagibigForm = showTaxForm = false;
+        formError = null;
+    }
+
+    // SSS
+    private void ShowAddSss() { sssForm = new SssTableDto { IsActive = true }; formEffectiveDate = new DateTime(2024, 1, 1); showSssForm = true; }
+    private async Task CreateSss()
+    {
+        sssForm.EffectiveDate = formEffectiveDate;
+        isSaving = true;
+        var result = await GovService.CreateSssAsync(sssForm);
+        if (result != null) { statusMessage = "SSS bracket added"; isError = false; await LoadAllData(); CloseModal(); }
+        else { formError = "Failed to add SSS bracket"; }
+        isSaving = false;
+    }
+    private async Task DeleteSss(int id) { await GovService.DeleteSssAsync(id); statusMessage = "SSS bracket deleted"; isError = false; await LoadAllData(); }
+
+    // PhilHealth
+    private void ShowAddPhilhealth() { philhealthForm = new PhilhealthTableDto { IsActive = true, PremiumRate = 0.05m, EmployeeShare = 0.50m, EmployerShare = 0.50m }; formEffectiveDate = new DateTime(2024, 1, 1); showPhilhealthForm = true; }
+    private async Task CreatePhilhealth()
+    {
+        philhealthForm.EffectiveDate = formEffectiveDate;
+        isSaving = true;
+        var result = await GovService.CreatePhilhealthAsync(philhealthForm);
+        if (result != null) { statusMessage = "PhilHealth entry added"; isError = false; await LoadAllData(); CloseModal(); }
+        else { formError = "Failed to add PhilHealth entry"; }
+        isSaving = false;
+    }
+    private async Task DeletePhilhealth(int id) { await GovService.DeletePhilhealthAsync(id); statusMessage = "PhilHealth entry deleted"; isError = false; await LoadAllData(); }
+
+    // Pag-IBIG
+    private void ShowAddPagibig() { pagibigForm = new PagibigTableDto { IsActive = true, EmployeeRate = 0.02m, EmployerRate = 0.02m }; formEffectiveDate = new DateTime(2024, 1, 1); showPagibigForm = true; }
+    private async Task CreatePagibig()
+    {
+        pagibigForm.EffectiveDate = formEffectiveDate;
+        isSaving = true;
+        var result = await GovService.CreatePagibigAsync(pagibigForm);
+        if (result != null) { statusMessage = "Pag-IBIG entry added"; isError = false; await LoadAllData(); CloseModal(); }
+        else { formError = "Failed to add Pag-IBIG entry"; }
+        isSaving = false;
+    }
+    private async Task DeletePagibig(int id) { await GovService.DeletePagibigAsync(id); statusMessage = "Pag-IBIG entry deleted"; isError = false; await LoadAllData(); }
+
+    // Tax
+    private void ShowAddTax() { taxForm = new TaxTableDto { IsActive = true, PeriodType = "Annual" }; formEffectiveDate = new DateTime(2024, 1, 1); showTaxForm = true; }
+    private async Task CreateTax()
+    {
+        taxForm.EffectiveDate = formEffectiveDate;
+        isSaving = true;
+        var result = await GovService.CreateTaxAsync(taxForm);
+        if (result != null) { statusMessage = "Tax bracket added"; isError = false; await LoadAllData(); CloseModal(); }
+        else { formError = "Failed to add tax bracket"; }
+        isSaving = false;
+    }
+    private async Task DeleteTax(int id) { await GovService.DeleteTaxAsync(id); statusMessage = "Tax bracket deleted"; isError = false; await LoadAllData(); }
+}

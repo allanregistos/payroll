@@ -5,7 +5,7 @@ var e=!1;const t=async()=>WebAssembly.validate(new Uint8Array([0,97,115,109,1,0,
   "mainAssemblyName": "Payroll.Web",
   "applicationEnvironment": "Development",
   "resources": {
-    "hash": "sha256-mvsND8etPGRne2AZVjbAavj/eWb4yHWWHnzChcVyMto=",
+    "hash": "sha256-4SY9MxQljkUAAawiLmzHCTovkFRnNSJc5iVX7/S+xt4=",
     "jsModuleNative": [
       {
         "name": "dotnet.native.cs8mcre4gh.js"
@@ -1054,15 +1054,15 @@ var e=!1;const t=async()=>WebAssembly.validate(new Uint8Array([0,97,115,109,1,0,
       },
       {
         "virtualPath": "Payroll.Web.wasm",
-        "name": "Payroll.Web.hruffuwgrx.wasm",
-        "integrity": "sha256-ffDvQZt+8Ww4NVm0xYwsV62MZA5bnIK8I4+kd1nYFVE="
+        "name": "Payroll.Web.qmhhc2texx.wasm",
+        "integrity": "sha256-gpeG6fDqcPICZByzJskOqz4Pif5RyjKmdTOJtKsm6Ro="
       }
     ],
     "pdb": [
       {
         "virtualPath": "Payroll.Web.pdb",
-        "name": "Payroll.Web.3cterioyv1.pdb",
-        "integrity": "sha256-Aw9fb6s5pv07f+C6kyreFJ6swdhx8eu49euw4NML+3w="
+        "name": "Payroll.Web.hkua8p918v.pdb",
+        "integrity": "sha256-QZXIY+tZ4sEelfmj6n4nYUd5Z75UZbuC61Cq75FTED4="
       }
     ],
     "libraryInitializers": [

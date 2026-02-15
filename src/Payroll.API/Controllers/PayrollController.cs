@@ -31,26 +31,33 @@ public class PayrollController : ControllerBase
     /// Get all payroll records
     /// </summary>
     [HttpGet]
-    public async Task<ActionResult<List<PayrollResponse>>> GetAllPayroll()
+    public async Task<ActionResult<List<ComputePayrollResponse>>> GetAllPayroll()
     {
         var payrolls = await _context.Set<PayrollHeader>()
             .Include(p => p.Employee)
             .Include(p => p.PayrollPeriod)
+            .Include(p => p.Earnings)
+            .Include(p => p.Deductions)
             .OrderByDescending(p => p.CreatedAt)
-            .Select(p => new PayrollResponse
+            .Select(p => new ComputePayrollResponse
             {
-                PayrollHeaderId = p.PayrollHeaderId,
+                PayrollId = p.PayrollHeaderId,
                 EmployeeId = p.EmployeeId,
-                EmployeeCode = p.Employee.EmployeeCode,
                 EmployeeName = p.Employee.FirstName + " " + p.Employee.LastName,
-                PayrollPeriodId = p.PayrollPeriodId,
-                PeriodName = p.PayrollPeriod.PeriodName,
+                EmployeeNumber = p.Employee.EmployeeCode,
+                PayPeriodStart = p.PayrollPeriod.StartDate,
+                PayPeriodEnd = p.PayrollPeriod.EndDate,
                 BasicSalary = p.BasicSalary,
                 GrossPay = p.GrossPay,
                 TotalDeductions = p.TotalDeductions,
+                TotalAllowances = p.Earnings.Where(e => e.EarningType == "Allowances").Sum(e => e.Amount),
+                SssContribution = p.Deductions.Where(d => d.DeductionType == "SSS Contribution").Sum(d => d.Amount),
+                PhilhealthContribution = p.Deductions.Where(d => d.DeductionType == "PhilHealth Contribution").Sum(d => d.Amount),
+                PagibigContribution = p.Deductions.Where(d => d.DeductionType == "Pag-IBIG Contribution").Sum(d => d.Amount),
+                WithholdingTax = p.Deductions.Where(d => d.DeductionType == "Withholding Tax").Sum(d => d.Amount),
+                OvertimePay = p.Earnings.Where(e => e.EarningType == "Overtime Pay").Sum(e => e.Amount),
                 NetPay = p.NetPay,
-                Status = p.Status,
-                CreatedAt = p.CreatedAt
+                PayrollStatus = p.Status
             })
             .ToListAsync();
 
@@ -132,7 +139,7 @@ public class PayrollController : ControllerBase
             EndDate = request.EndDate,
             PayDate = request.PayDate,
             PeriodType = request.PeriodType,
-            Status = "Open",
+            Status = "Draft",
             CreatedAt = DateTime.UtcNow
         };
 
@@ -162,6 +169,170 @@ public class PayrollController : ControllerBase
         };
 
         return CreatedAtAction(nameof(GetPayrollPeriod), new { id = period.PayrollPeriodId }, response);
+    }
+
+    /// <summary>
+    /// Update payroll period status
+    /// </summary>
+    [HttpPut("periods/{id}/status")]
+    public async Task<ActionResult> UpdatePeriodStatus(int id, [FromBody] UpdatePeriodStatusRequest request)
+    {
+        var period = await _context.Set<PayrollPeriod>().FindAsync(id);
+        if (period == null)
+            return NotFound(new { message = $"Payroll period with ID {id} not found" });
+
+        var allowedTransitions = new Dictionary<string, string[]>
+        {
+            { "Draft", new[] { "Processing", "Cancelled" } },
+            { "Processing", new[] { "Completed", "Cancelled" } },
+            { "Completed", new[] { "Posted", "Cancelled" } },
+            { "Posted", new string[] { } }
+        };
+
+        if (allowedTransitions.ContainsKey(period.Status) && 
+            !allowedTransitions[period.Status].Contains(request.Status))
+        {
+            return BadRequest(new { message = $"Cannot transition from '{period.Status}' to '{request.Status}'" });
+        }
+
+        period.Status = request.Status;
+        if (request.Status == "Processing")
+        {
+            period.ProcessedAt = DateTime.UtcNow;
+        }
+
+        try
+        {
+            await _context.SaveChangesAsync();
+            _logger.LogInformation("Updated period {PeriodId} status to {Status}", id, request.Status);
+            return Ok(new { message = $"Period status updated to {request.Status}" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating period status");
+            return StatusCode(500, new { message = "Error updating period status", error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Compute payroll for a single employee for a given date range
+    /// </summary>
+    [HttpPost("compute")]
+    public async Task<ActionResult<ComputePayrollResponse>> ComputePayroll(ComputePayrollRequest request)
+    {
+        if (request.EmployeeId == Guid.Empty)
+        {
+            return BadRequest(new { message = "Employee ID is required" });
+        }
+
+        if (request.PayPeriodStart >= request.PayPeriodEnd)
+        {
+            return BadRequest(new { message = "Pay period start must be before pay period end" });
+        }
+
+        try
+        {
+            // Find or create a payroll period matching the date range
+            var period = await _context.Set<PayrollPeriod>()
+                .FirstOrDefaultAsync(p => p.StartDate == request.PayPeriodStart && p.EndDate == request.PayPeriodEnd);
+
+            if (period == null)
+            {
+                period = new PayrollPeriod
+                {
+                    PeriodName = $"{request.PayPeriodStart:MMM dd} - {request.PayPeriodEnd:MMM dd, yyyy}",
+                    StartDate = request.PayPeriodStart,
+                    EndDate = request.PayPeriodEnd,
+                    PayDate = request.PayPeriodEnd,
+                    PeriodType = "Semi-Monthly",
+                    Status = "Draft",
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.Set<PayrollPeriod>().Add(period);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Auto-created payroll period {PeriodName} (ID: {PeriodId})", period.PeriodName, period.PayrollPeriodId);
+            }
+
+            // Compute payroll for the employee
+            // Check for existing payroll for this employee + period
+            var existingPayroll = await _context.Set<PayrollHeader>()
+                .AnyAsync(ph => ph.EmployeeId == request.EmployeeId && ph.PayrollPeriodId == period.PayrollPeriodId);
+
+            if (existingPayroll)
+            {
+                return Conflict(new { message = $"Payroll has already been computed for this employee for the period '{period.PeriodName}'. Please delete the existing record first." });
+            }
+
+            var result = await _payrollService.ComputePayrollAsync(
+                request.EmployeeId, period.PayrollPeriodId, DateTime.UtcNow);
+
+            // Save payroll header
+            var payrollHeader = new PayrollHeader
+            {
+                PayrollHeaderId = Guid.NewGuid(),
+                EmployeeId = result.EmployeeId,
+                PayrollPeriodId = period.PayrollPeriodId,
+                BasicSalary = result.BasicSalary,
+                GrossPay = result.GrossPay,
+                TotalDeductions = result.TotalDeductions,
+                NetPay = result.NetPay,
+                Status = "Pending",
+                CreatedAt = DateTime.UtcNow
+            };
+            _context.Set<PayrollHeader>().Add(payrollHeader);
+
+            // Save earnings
+            if (result.BasicSalary > 0)
+                _context.Set<PayrollEarning>().Add(new PayrollEarning { PayrollHeaderId = payrollHeader.PayrollHeaderId, EarningType = "Basic Salary", Amount = result.BasicSalary });
+            if (result.Allowances > 0)
+                _context.Set<PayrollEarning>().Add(new PayrollEarning { PayrollHeaderId = payrollHeader.PayrollHeaderId, EarningType = "Allowances", Amount = result.Allowances });
+            if (result.OvertimePay > 0)
+                _context.Set<PayrollEarning>().Add(new PayrollEarning { PayrollHeaderId = payrollHeader.PayrollHeaderId, EarningType = "Overtime Pay", Amount = result.OvertimePay });
+
+            // Save deductions
+            if (result.SssEmployeeContribution > 0)
+                _context.Set<PayrollDeduction>().Add(new PayrollDeduction { PayrollHeaderId = payrollHeader.PayrollHeaderId, DeductionType = "SSS Contribution", Amount = result.SssEmployeeContribution });
+            if (result.PhilhealthEmployeeContribution > 0)
+                _context.Set<PayrollDeduction>().Add(new PayrollDeduction { PayrollHeaderId = payrollHeader.PayrollHeaderId, DeductionType = "PhilHealth Contribution", Amount = result.PhilhealthEmployeeContribution });
+            if (result.PagibigEmployeeContribution > 0)
+                _context.Set<PayrollDeduction>().Add(new PayrollDeduction { PayrollHeaderId = payrollHeader.PayrollHeaderId, DeductionType = "Pag-IBIG Contribution", Amount = result.PagibigEmployeeContribution });
+            if (result.WithholdingTax > 0)
+                _context.Set<PayrollDeduction>().Add(new PayrollDeduction { PayrollHeaderId = payrollHeader.PayrollHeaderId, DeductionType = "Withholding Tax", Amount = result.WithholdingTax });
+
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Computed payroll for employee {EmployeeId} in period {PeriodId}", request.EmployeeId, period.PayrollPeriodId);
+
+            return Ok(new ComputePayrollResponse
+            {
+                PayrollId = payrollHeader.PayrollHeaderId,
+                EmployeeId = result.EmployeeId,
+                PayPeriodStart = request.PayPeriodStart,
+                PayPeriodEnd = request.PayPeriodEnd,
+                BasicSalary = result.BasicSalary,
+                TotalDeductions = result.TotalDeductions,
+                TotalAllowances = result.Allowances,
+                SssContribution = result.SssEmployeeContribution,
+                PhilhealthContribution = result.PhilhealthEmployeeContribution,
+                PagibigContribution = result.PagibigEmployeeContribution,
+                WithholdingTax = result.WithholdingTax,
+                OvertimePay = result.OvertimePay,
+                GrossPay = result.GrossPay,
+                NetPay = result.NetPay,
+                PayrollStatus = "Pending",
+                EmployeeName = result.EmployeeName,
+                EmployeeNumber = result.EmployeeCode
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error computing payroll for employee {EmployeeId}", request.EmployeeId);
+            return StatusCode(500, new { message = "Error computing payroll", error = ex.Message });
+        }
     }
 
     /// <summary>

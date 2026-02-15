@@ -78,6 +78,9 @@ public class PayrollDbContext : DbContext
             entity.Property(e => e.PhilhealthNumber).HasColumnName("philhealth_number").HasMaxLength(20);
             entity.Property(e => e.PagibigNumber).HasColumnName("pagibig_number").HasMaxLength(20);
             entity.Property(e => e.TinNumber).HasColumnName("tin_number").HasMaxLength(20);
+            entity.Property(e => e.BankName).HasColumnName("bank_name").HasMaxLength(100);
+            entity.Property(e => e.BankAccountNumber).HasColumnName("bank_account_number").HasMaxLength(30);
+            entity.Property(e => e.BankAccountName).HasColumnName("bank_account_name").HasMaxLength(150);
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
             entity.Property(e => e.CreatedBy).HasColumnName("created_by");
@@ -368,11 +371,11 @@ public class PayrollDbContext : DbContext
             entity.ToTable("tax_table");
             entity.HasKey(e => e.TaxTableId);
             entity.Property(e => e.TaxTableId).HasColumnName("tax_table_id");
-            entity.Property(e => e.MinIncome).HasColumnName("min_income").HasPrecision(15, 2);
-            entity.Property(e => e.MaxIncome).HasColumnName("max_income").HasPrecision(15, 2);
+            entity.Property(e => e.MinCompensation).HasColumnName("min_compensation").HasPrecision(15, 2);
+            entity.Property(e => e.MaxCompensation).HasColumnName("max_compensation").HasPrecision(15, 2);
             entity.Property(e => e.BaseTax).HasColumnName("base_tax").HasPrecision(15, 2);
             entity.Property(e => e.TaxRate).HasColumnName("tax_rate").HasPrecision(5, 4);
-            entity.Property(e => e.BracketName).HasColumnName("bracket_name").HasMaxLength(100);
+            entity.Property(e => e.ExcessOver).HasColumnName("excess_over").HasPrecision(15, 2);
             entity.Property(e => e.PeriodType).HasColumnName("period_type").HasMaxLength(20);
             entity.Property(e => e.EffectiveDate).HasColumnName("effective_date");
             entity.Property(e => e.EndDate).HasColumnName("end_date");
@@ -392,6 +395,7 @@ public class PayrollDbContext : DbContext
             entity.Property(e => e.RestDayPremium).HasColumnName("rest_day_premium").HasPrecision(5, 4);
             entity.Property(e => e.Year).HasColumnName("year");
             entity.Property(e => e.IsRecurring).HasColumnName("is_recurring");
+            entity.Property(e => e.IsActive).HasColumnName("is_active");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
 
             entity.HasIndex(e => e.HolidayDate);
@@ -535,6 +539,70 @@ public class PayrollDbContext : DbContext
             entity.HasOne(e => e.Employee)
                 .WithMany()
                 .HasForeignKey(e => e.EmployeeId);
+        });
+
+        // LoanType
+        modelBuilder.Entity<LoanType>(entity =>
+        {
+            entity.ToTable("loan_types");
+            entity.HasKey(e => e.LoanTypeId);
+            entity.Property(e => e.LoanTypeId).HasColumnName("loan_type_id");
+            entity.Property(e => e.LoanCode).HasColumnName("loan_code").HasMaxLength(20);
+            entity.Property(e => e.LoanName).HasColumnName("loan_name").HasMaxLength(100);
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.IsActive).HasColumnName("is_active");
+
+            entity.HasIndex(e => e.LoanCode).IsUnique();
+        });
+
+        // EmployeeLoan
+        modelBuilder.Entity<EmployeeLoan>(entity =>
+        {
+            entity.ToTable("employee_loans");
+            entity.HasKey(e => e.LoanId);
+            entity.Property(e => e.LoanId).HasColumnName("loan_id");
+            entity.Property(e => e.EmployeeId).HasColumnName("employee_id");
+            entity.Property(e => e.LoanTypeId).HasColumnName("loan_type_id");
+            entity.Property(e => e.LoanAmount).HasColumnName("loan_amount").HasPrecision(15, 2);
+            entity.Property(e => e.InterestRate).HasColumnName("interest_rate").HasPrecision(5, 4);
+            entity.Property(e => e.NumberOfInstallments).HasColumnName("number_of_installments");
+            entity.Property(e => e.MonthlyAmortization).HasColumnName("monthly_amortization").HasPrecision(15, 2);
+            entity.Property(e => e.LoanDate).HasColumnName("loan_date");
+            entity.Property(e => e.FirstDeductionDate).HasColumnName("first_deduction_date");
+            entity.Property(e => e.TotalPaid).HasColumnName("total_paid").HasPrecision(15, 2);
+            entity.Property(e => e.Balance).HasColumnName("balance").HasPrecision(15, 2);
+            entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(20);
+            entity.Property(e => e.Remarks).HasColumnName("remarks");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.CreatedBy).HasColumnName("created_by");
+
+            entity.HasOne(e => e.Employee)
+                .WithMany()
+                .HasForeignKey(e => e.EmployeeId);
+
+            entity.HasOne(e => e.LoanType)
+                .WithMany(lt => lt.EmployeeLoans)
+                .HasForeignKey(e => e.LoanTypeId);
+        });
+
+        // LoanPayment
+        modelBuilder.Entity<LoanPayment>(entity =>
+        {
+            entity.ToTable("loan_payments");
+            entity.HasKey(e => e.PaymentId);
+            entity.Property(e => e.PaymentId).HasColumnName("payment_id");
+            entity.Property(e => e.LoanId).HasColumnName("loan_id");
+            entity.Property(e => e.PayrollHeaderId).HasColumnName("payroll_header_id");
+            entity.Property(e => e.PaymentDate).HasColumnName("payment_date");
+            entity.Property(e => e.PrincipalAmount).HasColumnName("principal_amount").HasPrecision(15, 2);
+            entity.Property(e => e.InterestAmount).HasColumnName("interest_amount").HasPrecision(15, 2);
+            entity.Property(e => e.TotalAmount).HasColumnName("total_amount").HasPrecision(15, 2);
+            entity.Property(e => e.BalanceAfterPayment).HasColumnName("balance_after_payment").HasPrecision(15, 2);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+
+            entity.HasOne(e => e.Loan)
+                .WithMany(l => l.Payments)
+                .HasForeignKey(e => e.LoanId);
         });
     }
 }

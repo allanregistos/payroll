@@ -30,7 +30,7 @@ public class WithholdingTaxCalculator : IWithholdingTaxCalculator
             .Where(t => t.IsActive &&
                        t.EffectiveDate <= effectiveDate &&
                        (t.EndDate == null || t.EndDate >= effectiveDate))
-            .OrderBy(t => t.MinIncome)
+            .OrderBy(t => t.MinCompensation)
             .ToListAsync();
 
         if (!taxBrackets.Any())
@@ -42,28 +42,27 @@ public class WithholdingTaxCalculator : IWithholdingTaxCalculator
 
         // Find the appropriate tax bracket
         var applicableBracket = taxBrackets
-            .Where(t => taxableIncome >= t.MinIncome && 
-                       (t.MaxIncome == null || taxableIncome <= t.MaxIncome))
+            .Where(t => taxableIncome >= t.MinCompensation && 
+                       (t.MaxCompensation == null || taxableIncome <= t.MaxCompensation))
             .FirstOrDefault();
 
         if (applicableBracket == null)
         {
             // Income exceeds highest bracket - use the highest bracket
             applicableBracket = taxBrackets
-                .OrderByDescending(t => t.MinIncome)
+                .OrderByDescending(t => t.MinCompensation)
                 .First();
         }
 
-        // Calculate tax using progressive formula:
-        // Tax = BaseTax + (ExcessOverMinimum × TaxRate)
+        // Calculate tax: Tax = BaseTax + (TaxableIncome - ExcessOver) × TaxRate
         decimal withholdingTax = 0;
 
-        if (taxableIncome > applicableBracket.MinIncome)
+        if (taxableIncome > applicableBracket.ExcessOver)
         {
-            var excessIncome = taxableIncome - applicableBracket.MinIncome;
+            var excessIncome = taxableIncome - applicableBracket.ExcessOver;
             withholdingTax = applicableBracket.BaseTax + (excessIncome * applicableBracket.TaxRate);
         }
-        else if (taxableIncome == applicableBracket.MinIncome)
+        else
         {
             withholdingTax = applicableBracket.BaseTax;
         }
@@ -75,11 +74,11 @@ public class WithholdingTaxCalculator : IWithholdingTaxCalculator
         {
             TaxableIncome = taxableIncome,
             WithholdingTax = withholdingTax,
-            TaxBracket = applicableBracket.BracketName ?? $"{applicableBracket.MinIncome:N2} - {applicableBracket.MaxIncome:N2}",
+            TaxBracket = $"{applicableBracket.MinCompensation:N2} - {applicableBracket.MaxCompensation:N2}",
             TaxRate = applicableBracket.TaxRate,
             BaseTax = applicableBracket.BaseTax,
-            ExcessOverMinimum = taxableIncome > applicableBracket.MinIncome 
-                ? taxableIncome - applicableBracket.MinIncome 
+            ExcessOverMinimum = taxableIncome > applicableBracket.ExcessOver 
+                ? taxableIncome - applicableBracket.ExcessOver 
                 : 0
         };
     }

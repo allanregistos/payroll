@@ -1133,10 +1133,10 @@
 /home/allanregistos/apps/payroll/src/Payroll.Web/obj/Debug/net10.0/refint/Payroll.Web.dll
 /home/allanregistos/apps/payroll/src/Payroll.Web/obj/Debug/net10.0/Payroll.Web.pdb
 /home/allanregistos/apps/payroll/src/Payroll.Web/obj/Debug/net10.0/ref/Payroll.Web.dll
-/home/allanregistos/apps/payroll/src/Payroll.Web/bin/Debug/net10.0/wwwroot/_framework/Payroll.Web.hruffuwgrx.wasm
-/home/allanregistos/apps/payroll/src/Payroll.Web/bin/Debug/net10.0/wwwroot/_framework/Payroll.Web.3cterioyv1.pdb
-/home/allanregistos/apps/payroll/src/Payroll.Web/bin/Debug/net10.0/wwwroot/_framework/Payroll.Web.hruffuwgrx.wasm.gz
-/home/allanregistos/apps/payroll/src/Payroll.Web/bin/Debug/net10.0/wwwroot/_framework/Payroll.Web.3cterioyv1.pdb.gz
-/home/allanregistos/apps/payroll/src/Payroll.Web/obj/Debug/net10.0/compressed/q77l70ax33-{0}-hruffuwgrx-hruffuwgrx.gz
-/home/allanregistos/apps/payroll/src/Payroll.Web/obj/Debug/net10.0/compressed/o47pvagph9-{0}-3cterioyv1-3cterioyv1.gz
-/home/allanregistos/apps/payroll/src/Payroll.Web/obj/Debug/net10.0/compressed/qdybjq3zfd-{0}-pmgiu0lr28-pmgiu0lr28.gz
+/home/allanregistos/apps/payroll/src/Payroll.Web/bin/Debug/net10.0/wwwroot/_framework/Payroll.Web.qmhhc2texx.wasm
+/home/allanregistos/apps/payroll/src/Payroll.Web/bin/Debug/net10.0/wwwroot/_framework/Payroll.Web.hkua8p918v.pdb
+/home/allanregistos/apps/payroll/src/Payroll.Web/bin/Debug/net10.0/wwwroot/_framework/Payroll.Web.qmhhc2texx.wasm.gz
+/home/allanregistos/apps/payroll/src/Payroll.Web/bin/Debug/net10.0/wwwroot/_framework/Payroll.Web.hkua8p918v.pdb.gz
+/home/allanregistos/apps/payroll/src/Payroll.Web/obj/Debug/net10.0/compressed/q77l70ax33-{0}-qmhhc2texx-qmhhc2texx.gz
+/home/allanregistos/apps/payroll/src/Payroll.Web/obj/Debug/net10.0/compressed/o47pvagph9-{0}-hkua8p918v-hkua8p918v.gz
+/home/allanregistos/apps/payroll/src/Payroll.Web/obj/Debug/net10.0/compressed/qdybjq3zfd-{0}-bo6dh10p9h-bo6dh10p9h.gz

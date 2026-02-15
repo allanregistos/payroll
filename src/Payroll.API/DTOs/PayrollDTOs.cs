@@ -31,6 +31,39 @@ public class ProcessPayrollRequest
     public DateTime? EffectiveDate { get; set; } // For government contributions, defaults to current date
 }
 
+public class UpdatePeriodStatusRequest
+{
+    public string Status { get; set; } = string.Empty;
+}
+
+public class ComputePayrollRequest
+{
+    public Guid EmployeeId { get; set; }
+    public DateOnly PayPeriodStart { get; set; }
+    public DateOnly PayPeriodEnd { get; set; }
+}
+
+public class ComputePayrollResponse
+{
+    public Guid PayrollId { get; set; }
+    public Guid EmployeeId { get; set; }
+    public DateOnly PayPeriodStart { get; set; }
+    public DateOnly PayPeriodEnd { get; set; }
+    public decimal BasicSalary { get; set; }
+    public decimal TotalDeductions { get; set; }
+    public decimal TotalAllowances { get; set; }
+    public decimal SssContribution { get; set; }
+    public decimal PhilhealthContribution { get; set; }
+    public decimal PagibigContribution { get; set; }
+    public decimal WithholdingTax { get; set; }
+    public decimal OvertimePay { get; set; }
+    public decimal GrossPay { get; set; }
+    public decimal NetPay { get; set; }
+    public string PayrollStatus { get; set; } = string.Empty;
+    public string? EmployeeName { get; set; }
+    public string? EmployeeNumber { get; set; }
+}
+
 public class PayrollResponse
 {
     public Guid PayrollHeaderId { get; set; }

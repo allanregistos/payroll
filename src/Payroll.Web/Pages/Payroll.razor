@@ -4,7 +4,7 @@
 @inject IAuthenticationService AuthService
 @inject NavigationManager Navigation
 
-<PageTitle>Payroll - Philippine Payroll System</PageTitle>
+<PageTitle>Steniel Payroll System</PageTitle>
 
 <div class="payroll-page">
     <div class="page-header">
@@ -462,7 +462,7 @@
 
         try
         {
-            var result = await PayrollService.ComputePayrollAsync(computeRequest);
+            var (result, error) = await PayrollService.ComputePayrollAsync(computeRequest);
             if (result != null)
             {
                 await LoadData();
@@ -470,7 +470,7 @@
             }
             else
             {
-                errorMessage = "Failed to compute payroll";
+                errorMessage = error ?? "Failed to compute payroll";
             }
         }
         catch (Exception ex)

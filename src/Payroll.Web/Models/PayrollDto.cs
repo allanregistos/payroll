@@ -1,4 +1,12 @@
+using System.Text.Json.Serialization;
+
 namespace PayrollWeb.Models;
+
+public class ApiError
+{
+    [JsonPropertyName("message")]
+    public string Message { get; set; } = string.Empty;
+}
 
 public class PayrollDto
 {

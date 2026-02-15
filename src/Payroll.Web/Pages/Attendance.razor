@@ -4,7 +4,7 @@
 @inject IAuthenticationService AuthService
 @inject NavigationManager Navigation
 
-<PageTitle>Attendance - Philippine Payroll System</PageTitle>
+<PageTitle>Attendance - Steniel Payroll System</PageTitle>
 
 <div class="attendance-page">
     <div class="page-header">
@@ -58,16 +58,16 @@
                             <td>@attendance.EmployeeName</td>
                             <td>@attendance.TimeIn?.ToString("hh:mm tt")</td>
                             <td>@attendance.TimeOut?.ToString("hh:mm tt")</td>
-                            <td>@attendance.HoursWorked.ToString("N2") hrs</td>
+                            <td>@attendance.RegularHours.ToString("N2") hrs</td>
                             <td>@attendance.OvertimeHours.ToString("N2") hrs</td>
                             <td>
-                                @if (attendance.IsAbsent)
+                                @if (attendance.LateMinutes > 0)
                                 {
-                                    <span class="badge badge-danger">Absent</span>
+                                    <span class="badge badge-warning">Late (@(attendance.LateMinutes) min)</span>
                                 }
-                                else if (attendance.IsLate)
+                                else if (attendance.IsHoliday)
                                 {
-                                    <span class="badge badge-warning">Late</span>
+                                    <span class="badge badge-info">Holiday</span>
                                 }
                                 else
                                 {
@@ -110,6 +110,10 @@
                     {
                         <div class="alert alert-danger">@errorMessage</div>
                     }
+                    @if (successMessage != null)
+                    {
+                        <div class="alert alert-success">@successMessage</div>
+                    }
 
                     <div class="form-group">
                         <label>Employee *</label>
@@ -131,7 +135,7 @@
                         <div class="form-group">
                             <label>Time In</label>
                             <div class="time-input-group">
-                                <input type="time" class="form-control" @bind="timeIn" @bind:format="HH:mm" />
+                                <input type="time" class="form-control" value="@FormatTimeOnly(timeIn)" @onchange="OnTimeInChanged" />
                                 <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => SetTimeIn(new TimeOnly(8, 0))">8:00 AM</button>
                                 <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => SetTimeIn(new TimeOnly(9, 0))">9:00 AM</button>
                                 <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="SetTimeInNow">Now</button>
@@ -140,7 +144,7 @@
                         <div class="form-group">
                             <label>Time Out</label>
                             <div class="time-input-group">
-                                <input type="time" class="form-control" @bind="timeOut" @bind:format="HH:mm" />
+                                <input type="time" class="form-control" value="@FormatTimeOnly(timeOut)" @onchange="OnTimeOutChanged" />
                                 <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => SetTimeOut(new TimeOnly(17, 0))">5:00 PM</button>
                                 <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => SetTimeOut(new TimeOnly(18, 0))">6:00 PM</button>
                                 <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="SetTimeOutNow">Now</button>
@@ -151,24 +155,15 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label>Hours Worked</label>
-                            <input type="number" step="0.01" class="form-control" @bind="formModel.HoursWorked" />
+                            <input type="number" step="0.01" class="form-control" value="@formModel.RegularHours.ToString("N2")" readonly
+                                   style="background-color: #f0f0f0; cursor: not-allowed;" />
+                            <small class="form-text text-muted">Auto-computed from Time In / Time Out</small>
                         </div>
                         <div class="form-group">
                             <label>Overtime Hours</label>
                             <input type="number" step="0.01" class="form-control" @bind="formModel.OvertimeHours" />
+                            <small class="form-text text-muted">Auto-computed (editable)</small>
                         </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>
-                            <input type="checkbox" @bind="formModel.IsLate" /> Is Late
-                        </label>
-                    </div>
-
-                    <div class="form-group">
-                        <label>
-                            <input type="checkbox" @bind="formModel.IsAbsent" /> Is Absent
-                        </label>
                     </div>
 
                     <div class="form-group">
@@ -251,6 +246,7 @@
     .badge-success { background: #28a745; color: white; }
     .badge-warning { background: #ffc107; color: #000; }
     .badge-danger { background: #dc3545; color: white; }
+    .badge-info { background: #17a2b8; color: white; }
 
     .modal-overlay {
         position: fixed;
@@ -320,6 +316,13 @@
         border-radius: 4px;
     }
 
+    .form-text {
+        display: block;
+        margin-top: 0.25rem;
+        font-size: 0.8rem;
+        color: #888;
+    }
+
     .no-records {
         text-align: center;
         padding: 2rem;
@@ -330,6 +333,24 @@
         text-align: center;
         padding: 2rem;
         color: #666;
+    }
+
+    .alert {
+        padding: 0.75rem 1rem;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+    }
+
+    .alert-danger {
+        background: #f8d7da;
+        color: #842029;
+        border: 1px solid #f5c2c7;
+    }
+
+    .alert-success {
+        background: #d1e7dd;
+        color: #0f5132;
+        border: 1px solid #badbcc;
     }
 </style>
 
@@ -342,11 +363,14 @@
     private bool isLoading = true;
     private bool isSaving = false;
     private string? errorMessage;
+    private string? successMessage;
     private DateTime? filterStartDate;
     private DateTime? filterEndDate;
     private DateTime attendanceDate = DateTime.Today;
     private TimeOnly? timeIn;
     private TimeOnly? timeOut;
+
+    private const decimal StandardWorkHours = 8.0m;
 
     protected override async Task OnInitializedAsync()
     {
@@ -374,13 +398,14 @@
         formModel = new AttendanceCreateDto 
         { 
             AttendanceDate = DateOnly.FromDateTime(DateTime.Today),
-            HoursWorked = 8,
+            RegularHours = 0,
             OvertimeHours = 0
         };
         attendanceDate = DateTime.Today;
         timeIn = null;
         timeOut = null;
         errorMessage = null;
+        successMessage = null;
         showForm = true;
     }
 
@@ -390,17 +415,18 @@
         formModel = new AttendanceCreateDto
         {
             EmployeeId = attendance.EmployeeId,
-            AttendanceDate = attendance.AttendanceDate,
-            HoursWorked = attendance.HoursWorked,
+            AttendanceDate = DateOnly.FromDateTime(attendance.AttendanceDate),
+            RegularHours = attendance.RegularHours,
             OvertimeHours = attendance.OvertimeHours,
-            IsLate = attendance.IsLate,
-            IsAbsent = attendance.IsAbsent,
+            LateMinutes = attendance.LateMinutes,
+            UndertimeMinutes = attendance.UndertimeMinutes,
             Remarks = attendance.Remarks
         };
-        attendanceDate = attendance.AttendanceDate.ToDateTime(TimeOnly.MinValue);
-        timeIn = attendance.TimeIn;
-        timeOut = attendance.TimeOut;
+        attendanceDate = attendance.AttendanceDate;
+        timeIn = attendance.TimeIn.HasValue ? TimeOnly.FromDateTime(attendance.TimeIn.Value) : null;
+        timeOut = attendance.TimeOut.HasValue ? TimeOnly.FromDateTime(attendance.TimeOut.Value) : null;
         errorMessage = null;
+        successMessage = null;
         showForm = true;
     }
 
@@ -409,6 +435,55 @@
         showForm = false;
         editingAttendance = null;
         errorMessage = null;
+        successMessage = null;
+    }
+
+    private void ComputeHours()
+    {
+        if (timeIn.HasValue && timeOut.HasValue)
+        {
+            var totalHours = (decimal)(timeOut.Value.ToTimeSpan() - timeIn.Value.ToTimeSpan()).TotalHours;
+            if (totalHours < 0) totalHours = 0;
+
+            formModel.RegularHours = Math.Min(totalHours, StandardWorkHours);
+            formModel.OvertimeHours = Math.Max(0, totalHours - StandardWorkHours);
+        }
+        else
+        {
+            formModel.RegularHours = 0;
+            formModel.OvertimeHours = 0;
+        }
+    }
+
+    private string FormatTimeOnly(TimeOnly? time)
+    {
+        return time?.ToString("HH:mm") ?? "";
+    }
+
+    private void OnTimeInChanged(ChangeEventArgs e)
+    {
+        if (TimeOnly.TryParse(e.Value?.ToString(), out var parsed))
+        {
+            timeIn = parsed;
+        }
+        else
+        {
+            timeIn = null;
+        }
+        ComputeHours();
+    }
+
+    private void OnTimeOutChanged(ChangeEventArgs e)
+    {
+        if (TimeOnly.TryParse(e.Value?.ToString(), out var parsed))
+        {
+            timeOut = parsed;
+        }
+        else
+        {
+            timeOut = null;
+        }
+        ComputeHours();
     }
 
     private async Task SaveAttendance()
@@ -421,6 +496,7 @@
 
         isSaving = true;
         errorMessage = null;
+        successMessage = null;
 
         formModel.AttendanceDate = DateOnly.FromDateTime(attendanceDate);
         formModel.TimeIn = timeIn;
@@ -434,13 +510,13 @@
                 {
                     TimeIn = formModel.TimeIn,
                     TimeOut = formModel.TimeOut,
-                    HoursWorked = formModel.HoursWorked,
+                    RegularHours = formModel.RegularHours,
                     OvertimeHours = formModel.OvertimeHours,
-                    IsLate = formModel.IsLate,
-                    IsAbsent = formModel.IsAbsent,
+                    LateMinutes = formModel.LateMinutes,
+                    UndertimeMinutes = formModel.UndertimeMinutes,
                     Remarks = formModel.Remarks
                 };
-                var success = await AttendanceService.UpdateAsync(editingAttendance.AttendanceId, updateDto);
+                var (success, error) = await AttendanceService.UpdateAsync(editingAttendance.AttendanceId, updateDto);
                 if (success)
                 {
                     await LoadData();
@@ -448,12 +524,12 @@
                 }
                 else
                 {
-                    errorMessage = "Failed to update attendance";
+                    errorMessage = error ?? "Failed to update attendance";
                 }
             }
             else
             {
-                var result = await AttendanceService.CreateAsync(formModel);
+                var (result, error) = await AttendanceService.CreateAsync(formModel);
                 if (result != null)
                 {
                     await LoadData();
@@ -461,7 +537,7 @@
                 }
                 else
                 {
-                    errorMessage = "Failed to create attendance";
+                    errorMessage = error ?? "Failed to create attendance";
                 }
             }
         }
@@ -475,15 +551,12 @@
         }
     }
 
-    private async Task DeleteAttendance(Guid id)
+    private async Task DeleteAttendance(int id)
     {
-        if (confirm("Are you sure you want to delete this attendance record?"))
+        var success = await AttendanceService.DeleteAsync(id);
+        if (success)
         {
-            var success = await AttendanceService.DeleteAsync(id);
-            if (success)
-            {
-                await LoadData();
-            }
+            await LoadData();
         }
     }
 
@@ -509,22 +582,24 @@
     private void SetTimeIn(TimeOnly time)
     {
         timeIn = time;
+        ComputeHours();
     }
 
     private void SetTimeOut(TimeOnly time)
     {
         timeOut = time;
+        ComputeHours();
     }
 
     private void SetTimeInNow()
     {
         timeIn = TimeOnly.FromDateTime(DateTime.Now);
+        ComputeHours();
     }
 
     private void SetTimeOutNow()
     {
         timeOut = TimeOnly.FromDateTime(DateTime.Now);
+        ComputeHours();
     }
-
-    private bool confirm(string message) => true; // Browser confirm() not available in Blazor WASM
 }

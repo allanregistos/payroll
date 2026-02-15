@@ -4,7 +4,7 @@
 @inject IAuthenticationService AuthService
 @inject NavigationManager Navigation
 
-<PageTitle>Leave Management - Philippine Payroll System</PageTitle>
+<PageTitle>Leave Management - Steniel Payroll System</PageTitle>
 
 <div class="leaves-page">
     <div class="page-header">
@@ -140,17 +140,26 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label>Start Date *</label>
-                            <input type="date" class="form-control" @bind="startDate" />
+                            <input type="date" class="form-control" value="@startDate.ToString("yyyy-MM-dd")" @onchange="OnStartDateChanged" />
                         </div>
                         <div class="form-group">
                             <label>End Date *</label>
-                            <input type="date" class="form-control" @bind="endDate" />
+                            <input type="date" class="form-control" value="@endDate.ToString("yyyy-MM-dd")" @onchange="OnEndDateChanged" />
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label>Total Days</label>
-                        <input type="number" step="0.5" class="form-control" @bind="formModel.TotalDays" />
+                        <label>Total Days *</label>
+                        <input type="number" step="0.5" class="form-control" 
+                                value="@formModel.TotalDays" readonly
+                                style="background-color: #f0f0f0; cursor: not-allowed;" />
+                        <small class="form-text" style="color:#888;">Auto-computed from Start/End date</small>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" @onchange="OnHalfDayChanged" checked="@isHalfDay" /> 
+                            Half Day (deduct 0.5 from total)
+                        </label>
                     </div>
 
                     <div class="form-group">
@@ -424,6 +433,7 @@
     private string? errorMessage;
     private DateTime startDate = DateTime.Today;
     private DateTime endDate = DateTime.Today.AddDays(1);
+    private bool isHalfDay = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -558,5 +568,33 @@
         {
             await LoadData();
         }
+    }
+    private void CalculateTotalDays()
+    {
+        var start = DateOnly.FromDateTime(startDate);
+        var end = DateOnly.FromDateTime(endDate);
+        var days = (end.ToDateTime(TimeOnly.MinValue) - start.ToDateTime(TimeOnly.MinValue)).Days + 1;
+        decimal totalDays = days > 0 ? days : 0;
+        if (isHalfDay) totalDays -= 0.5m;
+        formModel.TotalDays = totalDays > 0 ? totalDays : 0;
+    }
+
+    private void OnStartDateChanged(ChangeEventArgs e)
+    {
+        if (DateTime.TryParse(e.Value?.ToString(), out var parsed))
+            startDate = parsed;
+        CalculateTotalDays();
+    }
+
+    private void OnEndDateChanged(ChangeEventArgs e)
+    {
+        if (DateTime.TryParse(e.Value?.ToString(), out var parsed))
+            endDate = parsed;
+        CalculateTotalDays();
+    }
+    private void OnHalfDayChanged(ChangeEventArgs e)
+    {
+        isHalfDay = (bool)e.Value;
+        CalculateTotalDays();
     }
 }

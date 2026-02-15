@@ -66,14 +66,58 @@ public class PayrollComputationService : IPayrollComputationService
             .Where(a => a.EmployeeId == employeeId && a.IsActive)
             .SumAsync(a => a.Amount);
 
-        // Get overtime, holiday pay, and other earnings from attendance/payroll
-        // For now, we'll use zero, but this should be calculated from attendance records
-        var overtimePay = 0m;
-        var holidayPay = 0m;
-        var otherEarnings = 0m;
+        var dailyRate = compensation?.DailyRate ?? (basicSalary / 22);
+        var hourlyRate = compensation?.HourlyRate ?? (basicSalary / 22 / 8);
+
+        // Get attendance records for this pay period
+        var periodStart = payrollPeriod.StartDate.ToDateTime(TimeOnly.MinValue);
+        var periodEnd = payrollPeriod.EndDate.ToDateTime(TimeOnly.MaxValue);
+
+        var attendanceRecords = await _dbContext.Set<Attendance>()
+            .Where(a => a.EmployeeId == employeeId
+                && a.AttendanceDate >= periodStart
+                && a.AttendanceDate <= periodEnd)
+            .ToListAsync();
+
+        // Calculate attendance-based earnings
+        var daysWorked = attendanceRecords.Count(a => !a.IsAbsent);
+        var daysAbsent = attendanceRecords.Count(a => a.IsAbsent);
+        var totalRegularHours = attendanceRecords.Sum(a => a.RegularHours);
+        var totalOvertimeHours = attendanceRecords.Sum(a => a.OvertimeHours);
+        var totalLateMinutes = attendanceRecords.Sum(a => a.LateMinutes);
+        var totalUndertimeMinutes = attendanceRecords.Sum(a => a.UndertimeMinutes);
+
+        // Overtime pay: hourly rate × 1.25 × overtime hours (Philippine labor code standard OT rate)
+        var overtimePay = hourlyRate * 1.25m * totalOvertimeHours;
+
+        // Holiday pay: employees who worked on holidays get 100% premium
+        var holidayAttendance = attendanceRecords.Where(a => a.IsHoliday && !a.IsAbsent).ToList();
+        var holidayPay = holidayAttendance.Sum(a => dailyRate); // 100% premium for holiday work
+
+        // Rest day pay: employees who worked on rest days get 30% premium
+        var restDayAttendance = attendanceRecords.Where(a => a.IsRestDay && !a.IsAbsent && !a.IsHoliday).ToList();
+        var restDayPay = restDayAttendance.Sum(a => dailyRate * 0.30m);
+
+        // Late/undertime deductions (deduct per minute from hourly rate)
+        var perMinuteRate = hourlyRate / 60m;
+        var lateDeduction = perMinuteRate * totalLateMinutes;
+        var undertimeDeduction = perMinuteRate * totalUndertimeMinutes;
+        var otherEarnings = restDayPay;
+
+        // Basic pay: if attendance exists, compute proportionally; otherwise use full salary
+        decimal basicPay;
+        if (attendanceRecords.Any())
+        {
+            basicPay = dailyRate * daysWorked;
+        }
+        else
+        {
+            // No attendance records - use full basic salary (common for salaried employees)
+            basicPay = basicSalary;
+        }
 
         // Calculate gross pay
-        var grossPay = basicSalary + allowances + overtimePay + holidayPay + otherEarnings;
+        var grossPay = basicPay + allowances + overtimePay + holidayPay + otherEarnings - lateDeduction - undertimeDeduction;
 
         // Calculate government contributions
         var sssResult = await _sssCalculator.CalculateAsync(basicSalary, effectiveDate);
@@ -94,9 +138,14 @@ public class PayrollComputationService : IPayrollComputationService
                                        pagibigResult.EmployeeContribution +
                                        taxResult.WithholdingTax;
 
-        // Get other deductions (loans, etc.)
-        // For now, using zero, but this should come from loan deductions table
-        var loanDeductions = 0m;
+        // Get active loan deductions for this employee
+        var periodEndDate = payrollPeriod.EndDate;
+        var loanDeductions = await _dbContext.Set<EmployeeLoan>()
+            .Where(l => l.EmployeeId == employeeId
+                && l.Status == "Active"
+                && l.FirstDeductionDate <= periodEndDate)
+            .SumAsync(l => l.MonthlyAmortization);
+
         var otherDeductions = 0m;
         var totalOtherDeductions = loanDeductions + otherDeductions;
 

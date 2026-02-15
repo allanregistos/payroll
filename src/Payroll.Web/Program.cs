@@ -27,6 +27,10 @@ builder.Services.AddScoped<IPayrollService, PayrollService>();
 builder.Services.AddScoped<ILeaveService, LeaveService>();
 builder.Services.AddScoped<IDepartmentService, DepartmentService>();
 builder.Services.AddScoped<IPositionService, PositionService>();
+builder.Services.AddScoped<ICompensationService, CompensationService>();
+builder.Services.AddScoped<IPayrollPeriodService, PayrollPeriodService>();
+builder.Services.AddScoped<IGovernmentContributionService, GovernmentContributionService>();
+builder.Services.AddScoped<ILoanService, LoanService>();
 
 var host = builder.Build();
 
